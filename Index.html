@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>WaveSpeed Video Generator</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #0d0f12;
+    color: #f1f1f1;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    max-width: 760px;
+    margin: auto;
+    padding: 20px;
+}
+
+h1 {
+    margin-top: 0;
+    font-size: 26px;
+}
+
+.card {
+    background: #171a1f;
+    border: 1px solid #292e35;
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+}
+
+.card h2 {
+    margin-top: 0;
+    font-size: 18px;
+}
+
+label {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 14px;
+    color: #bfc5cc;
+}
+
+input,
+textarea,
+select {
+    width: 100%;
+    background: #0e1013;
+    color: white;
+    border: 1px solid #343a43;
+    border-radius: 9px;
+    padding: 11px;
+    font-size: 15px;
+    outline: none;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: #6d7cff;
+}
+
+textarea {
+    min-height: 130px;
+    resize: vertical;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+button {
+    border: 0;
+    border-radius: 9px;
+    padding: 11px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    background: #303640;
+    color: white;
+}
+
+button:hover {
+    background: #3b424d;
+}
+
+button.primary {
+    width: 100%;
+    background: #5967ff;
+    font-size: 16px;
+    padding: 14px;
+}
+
+button.primary:hover {
+    background: #6976ff;
+}
+
+button.danger {
+    background: #51272c;
+}
+
+.key-row {
+    display: flex;
+    gap: 8px;
+}
+
+.key-row input {
+    flex: 1;
+}
+
+.status {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #aab0b8;
+}
+
+.image-box {
+    border: 2px dashed #343a43;
+    border-radius: 12px;
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.image-box img {
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+}
+
+.image-placeholder {
+    color: #777e88;
+    text-align: center;
+    padding: 20px;
+}
+
+.image-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0;
+    color: #e4e7eb;
+    cursor: pointer;
+}
+
+.check input {
+    width: auto;
+    transform: scale(1.25);
+}
+
+#result {
+    display: none;
+}
+
+#videoResult {
+    width: 100%;
+    border-radius: 12px;
+    background: black;
+}
+
+.progress {
+    display: none;
+    margin-top: 14px;
+    text-align: center;
+    color: #aeb5bf;
+}
+
+.small {
+    font-size: 12px;
+    color: #777f89;
+    margin-top: 7px;
+}
+
+@media (max-width: 600px) {
+
+    .row {
+        grid-template-columns: 1fr;
+    }
+
+    .key-row {
+        flex-direction: column;
+    }
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🎬 WaveSpeed Video Generator</h1>
+
+
+<!-- =====================================================
+     API KEYS
+====================================================== -->
+
+<div class="card">
+
+<h2>🔑 API Keys</h2>
+
+<label>WaveSpeed API Key</label>
+
+<div class="key-row">
+
+<input
+    id="wavespeedKey"
+    type="password"
+    placeholder="WaveSpeed API key"
+>
+
+<button onclick="saveWaveSpeedKey()">
+Guardar
+</button>
+
+<button
+    class="danger"
+    onclick="deleteWaveSpeedKey()"
+>
+Borrar
+</button>
+
+</div>
+
+<div id="wavespeedStatus" class="status">
+Comprobando...
+</div>
+
+
+<br>
+
+<label>ImgBB API Key</label>
+
+<div class="key-row">
+
+<input
+    id="imgbbKey"
+    type="password"
+    placeholder="ImgBB API key"
+>
+
+<button onclick="saveImgBBKey()">
+Guardar
+</button>
+
+<button
+    class="danger"
+    onclick="deleteImgBBKey()"
+>
+Borrar
+</button>
+
+</div>
+
+<div id="imgbbStatus" class="status">
+Comprobando...
+</div>
+
+</div>
+
+
+<!-- =====================================================
+     IMAGEN
+====================================================== -->
+
+<div class="card">
+
+<h2>🖼️ Imagen de referencia</h2>
+
+<div class="image-box">
+
+<div
+    id="imagePlaceholder"
+    class="image-placeholder"
+>
+Selecciona una imagen
+</div>
+
+<img
+    id="imagePreview"
+    style="display:none"
+>
+
+</div>
+
+<div class="image-actions">
+
+<button onclick="selectImage()">
+Seleccionar imagen
+</button>
+
+<button
+    onclick="removeImage()"
+    class="danger"
+>
+Eliminar
+</button>
+
+</div>
+
+<button
+    onclick="testImgBBUpload()"
+    style="margin-top:10px; width:100%;"
+>
+🧪 Probar subida a ImgBB
+</button>
+
+<div
+    id="imgbbTestResult"
+    class="status"
+></div>
+
+<input
+    id="imageInput"
+    type="file"
+    accept="image/*"
+    style="display:none"
+    onchange="previewImage(event)"
+>
+
+</div>
+
+
+<!-- =====================================================
+     PROMPT
+====================================================== -->
+
+<div class="card">
+
+<h2>✍️ Prompt</h2>
+
+<textarea
+    id="prompt"
+    placeholder="Describe el video que quieres generar..."
+></textarea>
+
+</div>
+
+
+<!-- =====================================================
+     CONFIGURACIÓN
+====================================================== -->
+
+<div class="card">
+
+<h2>⚙️ Configuración</h2>
+
+<div class="row">
+
+<div>
+
+<label>Duración</label>
+
+<select id="duration">
+
+<option value="2">2 segundos</option>
+<option value="3">3 segundos</option>
+<option value="4">4 segundos</option>
+<option value="5">5 segundos</option>
+<option value="6">6 segundos</option>
+<option value="7">7 segundos</option>
+<option value="8">8 segundos</option>
+<option value="9">9 segundos</option>
+<option value="10">10 segundos</option>
+<option value="11">11 segundos</option>
+<option value="12">12 segundos</option>
+<option value="13">13 segundos</option>
+<option value="14">14 segundos</option>
+<option value="15">15 segundos</option>
+<option value="16">16 segundos</option>
+<option value="17">17 segundos</option>
+<option value="18">18 segundos</option>
+<option value="19">19 segundos</option>
+<option value="20">20 segundos</option>
+<option value="21" selected>21 segundos</option>
+<option value="22">22 segundos</option>
+<option value="23">23 segundos</option>
+<option value="24">24 segundos</option>
+<option value="25">25 segundos</option>
+<option value="26">26 segundos</option>
+<option value="27">27 segundos</option>
+<option value="28">28 segundos</option>
+<option value="29">29 segundos</option>
+<option value="30">30 segundos</option>
+
+</select>
+
+</div>
+
+
+<div>
+
+<label>Relación de aspecto</label>
+
+<select id="aspectRatio">
+
+<option value="9:16" selected>9:16 Vertical</option>
+<option value="16:9">16:9 Horizontal</option>
+<option value="1:1">1:1 Cuadrado</option>
+<option value="4:3">4:3</option>
+<option value="3:4">3:4</option>
+
+</select>
+
+</div>
+
+
+<div>
+
+<label>Resolución</label>
+
+<select id="resolution">
+
+<option value="480p" selected>480p</option>
+<option value="720p">720p</option>
+<option value="1080p">1080p</option>
+
+</select>
+
+</div>
+
+</div>
+
+
+<label class="check">
+
+<input
+    type="checkbox"
+    id="enableAudio"
+    checked
+>
+
+<span>
+Generar audio
+</span>
+
+</label>
+
+
+<label class="check">
+
+<input
+    type="checkbox"
+    id="enablePromptExpansion"
+>
+
+<span>
+Expansión automática del prompt
+</span>
+
+</label>
+
+
+<label class="check">
+
+<input
+    type="checkbox"
+    id="enableSafetyChecker"
+>
+
+<span>
+Safety checker
+</span>
+
+</label>
+
+<div class="small">
+Los parámetros se envían directamente a WaveSpeed.
+</div>
+
+</div>
+
+
+<!-- =====================================================
+     GENERAR
+====================================================== -->
+
+<div class="card">
+
+<button
+    id="generateButton"
+    class="primary"
+    onclick="generateVideo()"
+>
+🚀 Generar video
+</button>
+
+<div
+    id="progress"
+    class="progress"
+>
+Procesando... primero se subirá la imagen a ImgBB y luego
+se enviará la tarea a WaveSpeed.
+</div>
+
+<div
+    id="message"
+    class="status"
+></div>
+
+</div>
+
+
+<!-- =====================================================
+     RESULTADO
+====================================================== -->
+
+<div
+    id="result"
+    class="card"
+>
+
+<h2>🎥 Resultado</h2>
+
+<video
+    id="videoResult"
+    controls
+    playsinline
+></video>
+
+</div>
+
+
+</div>
+
+
+<script>
+
+let selectedImage = null;
+
+
+// ========================================================
+// STATUS
+// ========================================================
+
+async function checkApiStatus() {
+
+    try {
+
+        const response = await fetch(
+            "/api/status"
+        );
+
+        const data = await response.json();
+
+        document.getElementById(
+            "wavespeedStatus"
+        ).textContent =
+            data.wavespeed_configured
+            ? "🟢 WaveSpeed configurado"
+            : "🔴 WaveSpeed no configurado";
+
+
+        document.getElementById(
+            "imgbbStatus"
+        ).textContent =
+            data.imgbb_configured
+            ? "🟢 ImgBB configurado"
+            : "🔴 ImgBB no configurado";
+
+    } catch (error) {
+
+        document.getElementById(
+            "wavespeedStatus"
+        ).textContent =
+            "🔴 No se pudo conectar con el servidor";
+
+        document.getElementById(
+            "imgbbStatus"
+        ).textContent = "";
+
+    }
+
+}
+
+
+// ========================================================
+// WAVE SPEED KEY
+// ========================================================
+
+async function saveWaveSpeedKey() {
+
+    const key =
+        document.getElementById(
+            "wavespeedKey"
+        ).value.trim();
+
+    if (!key) {
+
+        alert(
+            "Introduce la API key de WaveSpeed."
+        );
+
+        return;
+    }
+
+    const response = await fetch(
+        "/api/save-key",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                api_key: key
+            })
+        }
+    );
+
+    const data = await response.json();
+
+    if (data.success) {
+
+        document.getElementById(
+            "wavespeedKey"
+        ).value = "";
+
+        checkApiStatus();
+
+    } else {
+
+        alert(
+            data.error || "No se pudo guardar la key."
+        );
+
+    }
+
+}
+
+
+async function deleteWaveSpeedKey() {
+
+    if (!confirm(
+        "¿Borrar la API key de WaveSpeed?"
+    )) {
+        return;
+    }
+
+    await fetch(
+        "/api/delete-key",
+        {
+            method: "POST"
+        }
+    );
+
+    checkApiStatus();
+}
+
+
+// ========================================================
+// IMGBB KEY
+// ========================================================
+
+async function saveImgBBKey() {
+
+    const key =
+        document.getElementById(
+            "imgbbKey"
+        ).value.trim();
+
+    if (!key) {
+
+        alert(
+            "Introduce la API key de ImgBB."
+        );
+
+        return;
+    }
+
+    const response = await fetch(
+        "/api/save-imgbb-key",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                api_key: key
+            })
+        }
+    );
+
+    const data = await response.json();
+
+    if (data.success) {
+
+        document.getElementById(
+            "imgbbKey"
+        ).value = "";
+
+        checkApiStatus();
+
+    } else {
+
+        alert(
+            data.error || "No se pudo guardar la key."
+        );
+
+    }
+
+}
+
+
+async function deleteImgBBKey() {
+
+    if (!confirm(
+        "¿Borrar la API key de ImgBB?"
+    )) {
+        return;
+    }
+
+    await fetch(
+        "/api/delete-imgbb-key",
+        {
+            method: "POST"
+        }
+    );
+
+    checkApiStatus();
+}
+
+
+// ========================================================
+// IMAGEN
+// ========================================================
+
+function selectImage() {
+
+    document.getElementById(
+        "imageInput"
+    ).click();
+
+}
+
+
+function previewImage(event) {
+
+    const file =
+        event.target.files[0];
+
+    if (!file) {
+        return;
+    }
+
+    selectedImage = file;
+
+    const preview =
+        document.getElementById(
+            "imagePreview"
+        );
+
+    preview.src =
+        URL.createObjectURL(file);
+
+    preview.style.display = "block";
+
+    document.getElementById(
+        "imagePlaceholder"
+    ).style.display = "none";
+
+}
+
+
+function removeImage() {
+
+    selectedImage = null;
+
+    document.getElementById(
+        "imageInput"
+    ).value = "";
+
+    document.getElementById(
+        "imagePreview"
+    ).style.display = "none";
+
+    document.getElementById(
+        "imagePreview"
+    ).src = "";
+
+    document.getElementById(
+        "imagePlaceholder"
+    ).style.display = "block";
+
+}
+
+
+// ========================================================
+// GENERAR
+// ========================================================
+
+async function generateVideo() {
+
+    const prompt =
+        document.getElementById(
+            "prompt"
+        ).value.trim();
+
+    if (!selectedImage) {
+
+        alert(
+            "Selecciona una imagen de referencia."
+        );
+
+        return;
+    }
+
+    if (!prompt) {
+
+        alert(
+            "Escribe un prompt."
+        );
+
+        return;
+    }
+
+
+    const button =
+        document.getElementById(
+            "generateButton"
+        );
+
+    const progress =
+        document.getElementById(
+            "progress"
+        );
+
+    const message =
+        document.getElementById(
+            "message"
+        );
+
+
+    button.disabled = true;
+
+    button.textContent =
+        "⏳ Generando...";
+
+    progress.style.display =
+        "block";
+
+    message.textContent =
+        "";
+
+
+    const formData =
+        new FormData();
+
+    formData.append(
+        "image",
+        selectedImage
+    );
+
+    formData.append(
+        "prompt",
+        prompt
+    );
+
+    formData.append(
+        "duration",
+        document.getElementById(
+            "duration"
+        ).value
+    );
+
+    formData.append(
+        "aspect_ratio",
+        document.getElementById(
+            "aspectRatio"
+        ).value
+    );
+
+    formData.append(
+        "resolution",
+        document.getElementById(
+            "resolution"
+        ).value
+    );
+
+    formData.append(
+        "enable_audio",
+        document.getElementById(
+            "enableAudio"
+        ).checked
+            ? "true"
+            : "false"
+    );
+
+    formData.append(
+        "enable_prompt_expansion",
+        document.getElementById(
+            "enablePromptExpansion"
+        ).checked
+            ? "true"
+            : "false"
+    );
+
+    formData.append(
+        "enable_safety_checker",
+        document.getElementById(
+            "enableSafetyChecker"
+        ).checked
+            ? "true"
+            : "false"
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/generate",
+                {
+                    method: "POST",
+                    body: formData
+                }
+            );
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok || !data.success) {
+
+            throw new Error(
+                data.error ||
+                "La generación falló."
+            );
+
+        }
+
+
+        const outputs =
+            data.outputs || [];
+
+        if (!outputs.length) {
+
+            throw new Error(
+                "WaveSpeed no devolvió ningún video."
+            );
+
+        }
+
+
+        // WaveSpeed normalmente devuelve
+        // las URLs dentro de outputs.
+        const videoUrl =
+            outputs[0];
+
+
+        const video =
+            document.getElementById(
+                "videoResult"
+            );
+
+        video.src =
+            videoUrl;
+
+        document.getElementById(
+            "result"
+        ).style.display = "block";
+
+
+        message.textContent =
+            "✅ Video generado correctamente.";
+
+    }
+
+    catch (error) {
+
+        message.textContent =
+            "❌ " + error.message;
+
+    }
+
+    finally {
+
+        button.disabled = false;
+
+        button.textContent =
+            "🚀 Generar video";
+
+        progress.style.display =
+            "none";
+
+    }
+
+}
+
+
+// ========================================================
+// PRUEBA IMGBB
+// ========================================================
+
+async function testImgBBUpload() {
+
+    if (!selectedImage) {
+        alert("Primero selecciona una imagen.");
+        return;
+    }
+
+    const result =
+        document.getElementById("imgbbTestResult");
+
+    result.textContent =
+        "⏳ Subiendo imagen a ImgBB...";
+
+    const formData =
+        new FormData();
+
+    formData.append(
+        "image",
+        selectedImage
+    );
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/upload-image",
+                {
+                    method: "POST",
+                    body: formData
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.success) {
+
+            throw new Error(
+                data.error ||
+                "La subida falló."
+            );
+        }
+
+        result.innerHTML =
+            '✅ Imagen subida correctamente.<br>' +
+            '<a href="' +
+            data.url +
+            '" target="_blank">' +
+            'Abrir imagen en ImgBB' +
+            '</a>';
+
+        console.log(
+            "URL ImgBB:",
+            data.url
+        );
+
+    } catch (error) {
+
+        result.textContent =
+            "❌ " + error.message;
+
+        console.error(error);
+
+    }
+
+}
+
+
+// ========================================================
+// PRUEBA IMGBB
+// ========================================================
+
+async function testImgBBUpload() {
+
+    if (!selectedImage) {
+        alert("Primero selecciona una imagen.");
+        return;
+    }
+
+    const result =
+        document.getElementById("imgbbTestResult");
+
+    result.textContent =
+        "⏳ Subiendo imagen a ImgBB...";
+
+    const formData =
+        new FormData();
+
+    formData.append(
+        "image",
+        selectedImage
+    );
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/upload-image",
+                {
+                    method: "POST",
+                    body: formData
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.success) {
+
+            throw new Error(
+                data.error ||
+                "La subida falló."
+            );
+        }
+
+        result.innerHTML =
+            '✅ Imagen subida correctamente.<br>' +
+            '<a href="' +
+            data.url +
+            '" target="_blank">' +
+            'Abrir imagen en ImgBB' +
+            '</a>';
+
+        console.log(
+            "URL ImgBB:",
+            data.url
+        );
+
+    } catch (error) {
+
+        result.textContent =
+            "❌ " + error.message;
+
+        console.error(error);
+
+    }
+
+}
+
+
+
+// ========================================================
+// PRUEBA IMGBB
+// ========================================================
+
+async function testImgBBUpload() {
+
+    if (!selectedImage) {
+        alert("Primero selecciona una imagen.");
+        return;
+    }
+
+    const result =
+        document.getElementById("imgbbTestResult");
+
+    result.textContent =
+        "⏳ Subiendo imagen a ImgBB...";
+
+    const formData =
+        new FormData();
+
+    formData.append(
+        "image",
+        selectedImage
+    );
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/upload-image",
+                {
+                    method: "POST",
+                    body: formData
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.success) {
+
+            throw new Error(
+                data.error ||
+                "La subida falló."
+            );
+        }
+
+        result.innerHTML =
+            '✅ Imagen subida correctamente.<br>' +
+            '<a href="' +
+            data.url +
+            '" target="_blank">' +
+            'Abrir imagen en ImgBB' +
+            '</a>';
+
+        console.log(
+            "URL ImgBB:",
+            data.url
+        );
+
+    } catch (error) {
+
+        result.textContent =
+            "❌ " + error.message;
+
+        console.error(error);
+
+    }
+
+}
+
+
+// ========================================================
+// INICIO
+// ========================================================
+
+checkApiStatus();
+
+</script>
+
+</body>
+</html>
