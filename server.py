@@ -8,12 +8,21 @@ from urllib.error import HTTPError, URLError
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 
+# =========================================
+# CONFIGURACIÓN DEL SERVIDOR
+# =========================================
+
 HOST = "0.0.0.0"
 PORT = 8000
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(BASE_DIR, "web")
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
+
+
+# =========================================
+# WAVE SPEED
+# =========================================
 
 WAVESPEED_URL = (
     "https://api.wavespeed.ai/api/v3/alibaba/wan-3.0/reference-to-video"
@@ -23,12 +32,17 @@ WAVESPEED_RESULT_URL = (
     "https://api.wavespeed.ai/api/v3/predictions/{}/result"
 )
 
+
+# =========================================
+# IMGBB
+# =========================================
+
 IMGBB_URL = "https://api.imgbb.com/1/upload"
 
 
-# ============================================================
-# CONFIGURACIÓN
-# ============================================================
+# =========================================
+# CONFIG.JSON
+# =========================================
 
 def load_config():
     if not os.path.exists(CONFIG_FILE):
@@ -46,51 +60,90 @@ def save_config(config):
         json.dump(config, f, indent=4)
 
 
-# ============================================================
-# RESPUESTAS HTTP
-# ============================================================
+# =========================================
+# RESPUESTAS JSON
+# =========================================
 
 def send_json(handler, data, status=200):
-    body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+    body = json.dumps(
+        data,
+        ensure_ascii=False
+    ).encode("utf-8")
 
     handler.send_response(status)
-    handler.send_header("Content-Type", "application/json; charset=utf-8")
-    handler.send_header("Content-Length", str(len(body)))
-    handler.send_header("Cache-Control", "no-store")
+
+    handler.send_header(
+        "Content-Type",
+        "application/json; charset=utf-8"
+    )
+
+    handler.send_header(
+        "Content-Length",
+        str(len(body))
+    )
+
+    handler.send_header(
+        "Cache-Control",
+        "no-store"
+    )
+
     handler.end_headers()
 
     handler.wfile.write(body)
 
 
-def read_body(handler):
-    length = int(handler.headers.get("Content-Length", "0"))
+# =========================================
+# LEER BODY
+# =========================================
 
-    # Límite de 40 MB para evitar cargas accidentales enormes.
+def read_body(handler):
+
+    length = int(
+        handler.headers.get(
+            "Content-Length",
+            "0"
+        )
+    )
+
     if length > 40 * 1024 * 1024:
-        raise ValueError("Archivo demasiado grande.")
+        raise ValueError(
+            "Archivo demasiado grande."
+        )
 
     return handler.rfile.read(length)
 
 
-# ============================================================
-# MULTIPART
-# ============================================================
+# =========================================
+# PARSER MULTIPART
+# =========================================
 
 def parse_multipart(body, content_type):
+
     """
     Parser sencillo de multipart/form-data.
-    No utiliza cgi, que ya no está disponible en Python 3.13.
+    No utiliza cgi, que ya no está disponible
+    en Python 3.13.
     """
 
     if "boundary=" not in content_type:
-        raise ValueError("No se encontró boundary multipart.")
+        raise ValueError(
+            "No se encontró boundary multipart."
+        )
 
-    boundary = content_type.split("boundary=", 1)[1].strip()
+    boundary = content_type.split(
+        "boundary=",
+        1
+    )[1].strip()
 
-    if boundary.startswith('"') and boundary.endswith('"'):
+    if (
+        boundary.startswith('"')
+        and boundary.endswith('"')
+    ):
         boundary = boundary[1:-1]
 
-    boundary_bytes = ("--" + boundary).encode("utf-8")
+    boundary_bytes = (
+        "--" + boundary
+    ).encode("utf-8")
 
     parts = body.split(boundary_bytes)
 
@@ -98,10 +151,10 @@ def parse_multipart(body, content_type):
     files = {}
 
     for part in parts:
+
         if not part:
             continue
 
-        # El último separador termina con "--"
         if part.startswith(b"--"):
             continue
 
@@ -116,14 +169,23 @@ def parse_multipart(body, content_type):
         if separator not in part:
             continue
 
-        raw_headers, content = part.split(separator, 1)
+        raw_headers, content = part.split(
+            separator,
+            1
+        )
 
-        headers_text = raw_headers.decode("utf-8", errors="replace")
+        headers_text = raw_headers.decode(
+            "utf-8",
+            errors="replace"
+        )
 
         disposition = None
 
         for line in headers_text.split("\r\n"):
-            if line.lower().startswith("content-disposition:"):
+
+            if line.lower().startswith(
+                "content-disposition:"
+            ):
                 disposition = line
                 break
 
@@ -136,6 +198,7 @@ def parse_multipart(body, content_type):
         pieces = disposition.split(";")
 
         for piece in pieces:
+
             piece = piece.strip()
 
             if piece.startswith("name="):
@@ -148,83 +211,128 @@ def parse_multipart(body, content_type):
             continue
 
         if filename:
+
             files[name] = {
                 "filename": filename,
                 "data": content
             }
+
         else:
-            fields[name] = content.decode("utf-8", errors="replace")
+
+            fields[name] = content.decode(
+                "utf-8",
+                errors="replace"
+            )
 
     return fields, files
 
 
-# ============================================================
-# IMGBB
-# ============================================================
+# =========================================
+# SUBIR IMAGEN A IMGBB
+# =========================================
 
-def upload_to_imgbb(image_bytes, filename, api_key):
-    """
-    Sube la imagen directamente a ImgBB.
-    """
+def upload_to_imgbb(
+    image_bytes,
+    filename,
+    api_key
+):
 
-    boundary = "----PythonImgBB" + uuid.uuid4().hex
+    boundary = (
+        "----PythonImgBB"
+        + uuid.uuid4().hex
+    )
 
     body = bytearray()
 
-    # Campo image
-    body.extend(f"--{boundary}\r\n".encode())
     body.extend(
-        b'Content-Disposition: form-data; name="image"; '
+        f"--{boundary}\r\n".encode()
+    )
+
+    body.extend(
+        b'Content-Disposition: form-data; '
+        b'name="image"; '
         + f'filename="{filename}"'.encode()
         + b"\r\n"
     )
-    body.extend(b"Content-Type: application/octet-stream\r\n\r\n")
+
+    body.extend(
+        b"Content-Type: application/octet-stream\r\n\r\n"
+    )
+
     body.extend(image_bytes)
+
     body.extend(b"\r\n")
 
-    # Fin
-    body.extend(f"--{boundary}--\r\n".encode())
+    body.extend(
+        f"--{boundary}--\r\n".encode()
+    )
 
-    url = IMGBB_URL + "?" + urlencode({
-        "key": api_key
-    })
+    url = (
+        IMGBB_URL
+        + "?"
+        + urlencode({
+            "key": api_key
+        })
+    )
 
     request = Request(
         url,
         data=bytes(body),
         headers={
-            "Content-Type": f"multipart/form-data; boundary={boundary}",
-            "Content-Length": str(len(body))
+            "Content-Type":
+                f"multipart/form-data; boundary={boundary}",
+
+            "Content-Length":
+                str(len(body))
         },
         method="POST"
     )
 
     try:
-        with urlopen(request, timeout=120) as response:
+
+        with urlopen(
+            request,
+            timeout=120
+        ) as response:
+
             result = json.load(response)
 
     except HTTPError as e:
-        error_body = e.read().decode("utf-8", errors="replace")
+
+        error_body = e.read().decode(
+            "utf-8",
+            errors="replace"
+        )
+
         raise RuntimeError(
             f"ImgBB HTTP {e.code}: {error_body}"
         )
 
     except URLError as e:
+
         raise RuntimeError(
             f"No se pudo conectar con ImgBB: {e}"
         )
 
     if not result.get("success"):
+
         raise RuntimeError(
             "ImgBB rechazó la imagen: "
-            + json.dumps(result, ensure_ascii=False)
+            + json.dumps(
+                result,
+                ensure_ascii=False
+            )
         )
 
-    data = result.get("data", {})
+    data = result.get(
+        "data",
+        {}
+    )
 
     image_url = data.get("url")
 
     if not image_url:
+
         raise RuntimeError(
             "ImgBB no devolvió una URL de imagen."
         )
@@ -232,44 +340,73 @@ def upload_to_imgbb(image_bytes, filename, api_key):
     return image_url
 
 
-# ============================================================
-# WAVESPEED
-# ============================================================
+# =========================================
+# REQUEST A WAVESPEED
+# =========================================
 
-def wavespeed_request(url, api_key, data=None):
+def wavespeed_request(
+    url,
+    api_key,
+    data=None
+):
+
     headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
+        "Authorization":
+            f"Bearer {api_key}",
+
+        "Content-Type":
+            "application/json"
     }
 
     encoded = None
 
     if data is not None:
-        encoded = json.dumps(data).encode("utf-8")
+
+        encoded = json.dumps(
+            data
+        ).encode("utf-8")
 
     request = Request(
         url,
         data=encoded,
         headers=headers,
-        method="POST" if data is not None else "GET"
+        method=(
+            "POST"
+            if data is not None
+            else "GET"
+        )
     )
 
     try:
-        with urlopen(request, timeout=120) as response:
+
+        with urlopen(
+            request,
+            timeout=120
+        ) as response:
+
             return json.load(response)
 
     except HTTPError as e:
-        error_body = e.read().decode("utf-8", errors="replace")
+
+        error_body = e.read().decode(
+            "utf-8",
+            errors="replace"
+        )
 
         raise RuntimeError(
             f"WaveSpeed HTTP {e.code}: {error_body}"
         )
 
     except URLError as e:
+
         raise RuntimeError(
             f"No se pudo conectar con WaveSpeed: {e}"
         )
 
+
+# =========================================
+# GENERAR VIDEO
+# =========================================
 
 def generate_video(
     prompt,
@@ -284,21 +421,27 @@ def generate_video(
 ):
 
     payload = {
-        "prompt": prompt,
-        "resolution": resolution,
-        "aspect_ratio": aspect_ratio,
-        "duration": duration,
-        "enable_prompt_expansion": enable_prompt_expansion,
-        "enable_audio": enable_audio,
-        "enable_safety_checker": enable_safety_checker,
-        "reference_images": [
-            image_url
-        ]
-    }
 
-    # --------------------------------------------------------
-    # 1. Crear tarea
-    # --------------------------------------------------------
+        "prompt": prompt,
+
+        "resolution": resolution,
+
+        "aspect_ratio": aspect_ratio,
+
+        "duration": duration,
+
+        "enable_prompt_expansion":
+            enable_prompt_expansion,
+
+        "enable_audio":
+            enable_audio,
+
+        "enable_safety_checker":
+            enable_safety_checker,
+
+        "reference_images":
+            [image_url]
+    }
 
     submit_body = wavespeed_request(
         WAVESPEED_URL,
@@ -306,25 +449,34 @@ def generate_video(
         payload
     )
 
-    task = submit_body.get("data", submit_body)
+    task = submit_body.get(
+        "data",
+        submit_body
+    )
 
     prediction_id = task.get("id")
 
     if not prediction_id:
+
         raise RuntimeError(
             "WaveSpeed no devolvió un prediction ID:\n"
-            + json.dumps(submit_body, ensure_ascii=False)
+            + json.dumps(
+                submit_body,
+                ensure_ascii=False
+            )
         )
 
-    result_url = WAVESPEED_RESULT_URL.format(prediction_id)
+    result_url = (
+        WAVESPEED_RESULT_URL.format(
+            prediction_id
+        )
+    )
 
     print()
-    print("Tarea WaveSpeed creada:")
+    print(
+        "Tarea WaveSpeed creada:"
+    )
     print(prediction_id)
-
-    # --------------------------------------------------------
-    # 2. Polling
-    # --------------------------------------------------------
 
     while True:
 
@@ -333,25 +485,43 @@ def generate_video(
             api_key
         )
 
-        result = result_body.get("data", result_body)
+        result = result_body.get(
+            "data",
+            result_body
+        )
 
-        status = result.get("status")
+        status = result.get(
+            "status"
+        )
 
-        print("Estado:", status)
+        print(
+            "Estado:",
+            status
+        )
 
         if status == "completed":
 
-            outputs = result.get("outputs", [])
+            outputs = result.get(
+                "outputs",
+                []
+            )
 
             if not outputs:
+
                 raise RuntimeError(
-                    "WaveSpeed terminó pero no devolvió outputs."
+                    "WaveSpeed terminó pero "
+                    "no devolvió outputs."
                 )
 
             return {
-                "prediction_id": prediction_id,
-                "outputs": outputs,
-                "result": result
+                "prediction_id":
+                    prediction_id,
+
+                "outputs":
+                    outputs,
+
+                "result":
+                    result
             }
 
         if status in {
@@ -360,28 +530,45 @@ def generate_video(
             "timeout",
             "deleted"
         }:
+
             raise RuntimeError(
-                "La generación terminó con estado "
+                "La generación terminó con "
+                "estado "
                 + str(status)
                 + ":\n"
-                + json.dumps(result, ensure_ascii=False)
+                + json.dumps(
+                    result,
+                    ensure_ascii=False
+                )
             )
 
         time.sleep(2)
 
 
-# ============================================================
-# HANDLER
-# ============================================================
+# =========================================
+# HANDLER WEB
+# =========================================
 
-class WebHandler(SimpleHTTPRequestHandler):
+class WebHandler(
+    SimpleHTTPRequestHandler
+):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ):
+
         super().__init__(
             *args,
             directory=WEB_DIR,
             **kwargs
         )
+
+
+    # =====================================
+    # GET
+    # =====================================
 
     def do_GET(self):
 
@@ -389,29 +576,40 @@ class WebHandler(SimpleHTTPRequestHandler):
 
             config = load_config()
 
-            send_json(self, {
-    "wavespeed_configured": bool(
-        config.get("wavespeed_api_key")
-    ),
-    "imgbb_configured": bool(
-        os.environ.get("IMGBB_API_KEY")
-    )
-})
+            send_json(
+                self,
+                {
+                    "wavespeed_configured":
+                        bool(
+                            config.get(
+                                "wavespeed_api_key"
+                            )
+                        )
+                }
+            )
 
             return
 
         super().do_GET()
 
+
+    # =====================================
+    # POST
+    # =====================================
+
     def do_POST(self):
 
-        # ====================================================
-        # GUARDAR WAVE SPEED
-        # ====================================================
+        # ---------------------------------
+        # GUARDAR WAVESPEED API KEY
+        # ---------------------------------
 
         if self.path == "/api/save-key":
 
             try:
-                body = read_body(self)
+
+                body = read_body(
+                    self
+                )
 
                 data = json.loads(
                     body.decode("utf-8")
@@ -423,21 +621,37 @@ class WebHandler(SimpleHTTPRequestHandler):
                 ).strip()
 
                 if not key:
+
                     send_json(
                         self,
                         {
                             "success": False,
-                            "error": "La API key está vacía."
+                            "error":
+                                "La API key está vacía."
                         },
                         400
                     )
+
                     return
 
                 config = load_config()
 
-                config["wavespeed_api_key"] = key
+                config[
+                    "wavespeed_api_key"
+                ] = key
 
-                save_config(config)
+                # Por seguridad, si existiera
+                # una antigua clave de ImgBB
+                # en config.json, la eliminamos.
+
+                config.pop(
+                    "imgbb_api_key",
+                    None
+                )
+
+                save_config(
+                    config
+                )
 
                 send_json(
                     self,
@@ -460,114 +674,41 @@ class WebHandler(SimpleHTTPRequestHandler):
             return
 
 
-
-        # ====================================================
-        # BORRAR WAVE SPEED
-        # ====================================================
+        # ---------------------------------
+        # ELIMINAR WAVESPEED API KEY
+        # ---------------------------------
 
         if self.path == "/api/delete-key":
 
-            config = load_config()
-
-            config.pop(
-                "wavespeed_api_key",
-                None
-            )
-
-            save_config(config)
-
-            send_json(
-                self,
-                {
-                    "success": True
-                }
-            )
-
-            return
-
-
-        # ====================================================
-        # PROBAR SUBIDA A IMGBB
-        # ====================================================
-
-        if self.path == "/api/upload-image":
-
             try:
 
-                content_type = self.headers.get(
-                    "Content-Type",
-                    ""
+                config = load_config()
+
+                config.pop(
+                    "wavespeed_api_key",
+                    None
                 )
 
-                body = read_body(self)
+                # También limpiamos cualquier
+                # antigua clave de ImgBB.
 
-                fields, files = parse_multipart(
-                    body,
-                    content_type
+                config.pop(
+                    "imgbb_api_key",
+                    None
                 )
 
-                if "image" not in files:
-                    raise ValueError(
-                        "No se recibió ninguna imagen."
-                    )
-
-                imgbb_key = os.environ.get(
-    "IMGBB_API_KEY"
-)
-
-                if not imgbb_key:
-                    raise ValueError(
-                        "No hay una API key de ImgBB configurada en el servidor."
-                    )
-
-                image = files["image"]
-
-                image_bytes = image["data"]
-
-                filename = image["filename"]
-
-                if not image_bytes:
-                    raise ValueError(
-                        "La imagen está vacía."
-                    )
-
-                print()
-                print("===================================")
-                print(" PRUEBA DE SUBIDA IMGBB")
-                print("===================================")
-                print("Archivo:", filename)
-                print("Tamaño:", len(image_bytes), "bytes")
-                print()
-                print("Subiendo a ImgBB...")
-
-                image_url = upload_to_imgbb(
-                    image_bytes,
-                    filename,
-                    imgbb_key
+                save_config(
+                    config
                 )
-
-                print()
-                print("✅ SUBIDA CORRECTA")
-                print("URL:")
-                print(image_url)
-                print()
 
                 send_json(
                     self,
                     {
-                        "success": True,
-                        "url": image_url,
-                        "filename": filename,
-                        "size": len(image_bytes)
+                        "success": True
                     }
                 )
 
             except Exception as e:
-
-                print()
-                print("❌ ERROR IMGBB:")
-                print(str(e))
-                print()
 
                 send_json(
                     self,
@@ -580,24 +721,31 @@ class WebHandler(SimpleHTTPRequestHandler):
 
             return
 
-        # ====================================================
+
+        # ---------------------------------
         # GENERAR VIDEO
-        # ====================================================
+        # ---------------------------------
 
         if self.path == "/api/generate":
 
             try:
 
-                content_type = self.headers.get(
-                    "Content-Type",
-                    ""
+                content_type = (
+                    self.headers.get(
+                        "Content-Type",
+                        ""
+                    )
                 )
 
-                body = read_body(self)
+                body = read_body(
+                    self
+                )
 
-                fields, files = parse_multipart(
-                    body,
-                    content_type
+                fields, files = (
+                    parse_multipart(
+                        body,
+                        content_type
+                    )
                 )
 
                 prompt = fields.get(
@@ -606,18 +754,16 @@ class WebHandler(SimpleHTTPRequestHandler):
                 ).strip()
 
                 if not prompt:
+
                     raise ValueError(
                         "El prompt está vacío."
                     )
 
                 if "image" not in files:
+
                     raise ValueError(
                         "No se recibió ninguna imagen."
                     )
-
-                # ------------------------------------------------
-                # Parámetros
-                # ------------------------------------------------
 
                 resolution = fields.get(
                     "resolution",
@@ -630,13 +776,16 @@ class WebHandler(SimpleHTTPRequestHandler):
                 )
 
                 try:
+
                     duration = int(
                         fields.get(
                             "duration",
                             "21"
                         )
                     )
+
                 except ValueError:
+
                     raise ValueError(
                         "La duración no es válida."
                     )
@@ -645,26 +794,25 @@ class WebHandler(SimpleHTTPRequestHandler):
                     fields.get(
                         "enable_audio",
                         "true"
-                    ).lower() == "true"
+                    ).lower()
+                    == "true"
                 )
 
                 enable_prompt_expansion = (
                     fields.get(
                         "enable_prompt_expansion",
                         "false"
-                    ).lower() == "true"
+                    ).lower()
+                    == "true"
                 )
 
                 enable_safety_checker = (
                     fields.get(
                         "enable_safety_checker",
                         "false"
-                    ).lower() == "true"
+                    ).lower()
+                    == "true"
                 )
-
-                # ------------------------------------------------
-                # Validaciones
-                # ------------------------------------------------
 
                 allowed_resolutions = {
                     "480p",
@@ -681,23 +829,27 @@ class WebHandler(SimpleHTTPRequestHandler):
                 }
 
                 if resolution not in allowed_resolutions:
+
                     raise ValueError(
                         "Resolución no válida."
                     )
 
                 if aspect_ratio not in allowed_ratios:
+
                     raise ValueError(
                         "Relación de aspecto no válida."
                     )
 
                 if not 2 <= duration <= 30:
+
                     raise ValueError(
-                        "La duración debe estar entre 2 y 30 segundos."
+                        "La duración debe estar "
+                        "entre 2 y 30 segundos."
                     )
 
-                # ------------------------------------------------
-                # Config
-                # ------------------------------------------------
+                # ---------------------------------
+                # CARGAR CLAVES
+                # ---------------------------------
 
                 config = load_config()
 
@@ -705,23 +857,31 @@ class WebHandler(SimpleHTTPRequestHandler):
                     "wavespeed_api_key"
                 )
 
+                # ImgBB NO está en config.json.
+                # Se obtiene exclusivamente desde
+                # la variable de entorno de Codespaces.
+
                 imgbb_key = os.environ.get(
-    "IMGBB_API_KEY"
-)
+                    "IMGBB_API_KEY"
+                )
 
                 if not wavespeed_key:
+
                     raise ValueError(
-                        "No hay una API key de WaveSpeed configurada."
+                        "No hay una API key de "
+                        "WaveSpeed configurada."
                     )
 
                 if not imgbb_key:
+
                     raise ValueError(
-                        "No hay una API key de ImgBB configurada en el servidor."
+                        "No está configurada "
+                        "IMGBB_API_KEY en el entorno."
                     )
 
-                # ------------------------------------------------
-                # Imagen
-                # ------------------------------------------------
+                # ---------------------------------
+                # IMAGEN
+                # ---------------------------------
 
                 image = files["image"]
 
@@ -730,12 +890,19 @@ class WebHandler(SimpleHTTPRequestHandler):
                 filename = image["filename"]
 
                 if not image_bytes:
+
                     raise ValueError(
                         "La imagen está vacía."
                     )
 
+                # ---------------------------------
+                # SUBIR A IMGBB
+                # ---------------------------------
+
                 print()
-                print("Subiendo imagen a ImgBB...")
+                print(
+                    "Subiendo imagen a ImgBB..."
+                )
 
                 image_url = upload_to_imgbb(
                     image_bytes,
@@ -743,47 +910,82 @@ class WebHandler(SimpleHTTPRequestHandler):
                     imgbb_key
                 )
 
-                print("Imagen ImgBB:")
-                print(image_url)
+                print(
+                    "Imagen ImgBB:"
+                )
 
-                # ------------------------------------------------
-                # WaveSpeed
-                # ------------------------------------------------
+                print(
+                    image_url
+                )
 
                 print()
-                print("Enviando tarea a WaveSpeed...")
+
+                # ---------------------------------
+                # WAVESPEED
+                # ---------------------------------
+
+                print(
+                    "Enviando tarea a WaveSpeed..."
+                )
 
                 result = generate_video(
                     prompt=prompt,
+
                     image_url=image_url,
+
                     resolution=resolution,
+
                     aspect_ratio=aspect_ratio,
+
                     duration=duration,
+
                     enable_audio=enable_audio,
-                    enable_prompt_expansion=enable_prompt_expansion,
-                    enable_safety_checker=enable_safety_checker,
+
+                    enable_prompt_expansion=
+                        enable_prompt_expansion,
+
+                    enable_safety_checker=
+                        enable_safety_checker,
+
                     api_key=wavespeed_key
                 )
+
+                # ---------------------------------
+                # RESPUESTA
+                # ---------------------------------
 
                 send_json(
                     self,
                     {
                         "success": True,
-                        "prediction_id": result[
-                            "prediction_id"
-                        ],
-                        "image_url": image_url,
-                        "outputs": result[
-                            "outputs"
-                        ]
+
+                        "prediction_id":
+                            result[
+                                "prediction_id"
+                            ],
+
+                        "image_url":
+                            image_url,
+
+                        "outputs":
+                            result[
+                                "outputs"
+                            ]
                     }
                 )
 
             except Exception as e:
 
                 print()
-                print("ERROR:")
-                print(str(e))
+                print(
+                    "ERROR:"
+                )
+
+                print(
+                    str(e)
+                )
+
+                print()
 
                 send_json(
                     self,
@@ -796,19 +998,25 @@ class WebHandler(SimpleHTTPRequestHandler):
 
             return
 
+
+        # ---------------------------------
+        # ENDPOINT DESCONOCIDO
+        # ---------------------------------
+
         send_json(
             self,
             {
                 "success": False,
-                "error": "Endpoint no encontrado."
+                "error":
+                    "Endpoint no encontrado."
             },
             404
         )
 
 
-# ============================================================
-# SERVIDOR
-# ============================================================
+# =========================================
+# INICIAR SERVIDOR
+# =========================================
 
 server = HTTPServer(
     (HOST, PORT),
@@ -816,13 +1024,30 @@ server = HTTPServer(
 )
 
 print()
-print("===================================")
-print(" WaveSpeed Video Generator")
-print("===================================")
+print(
+    "==================================="
+)
+
+print(
+    " WaveSpeed Video Generator"
+)
+
+print(
+    "==================================="
+)
+
 print()
-print(f"http://{HOST}:{PORT}")
+
+print(
+    f"http://{HOST}:{PORT}"
+)
+
 print()
-print("Pulsa CTRL+C para detenerlo.")
+
+print(
+    "Pulsa CTRL+C para detenerlo."
+)
+
 print()
 
 server.serve_forever()
