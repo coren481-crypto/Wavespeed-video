@@ -8,7 +8,7 @@ from urllib.error import HTTPError, URLError
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 
-HOST = "127.0.0.1"
+HOST = "0.0.0.0"
 PORT = 8000
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -390,13 +390,13 @@ class WebHandler(SimpleHTTPRequestHandler):
             config = load_config()
 
             send_json(self, {
-                "wavespeed_configured": bool(
-                    config.get("wavespeed_api_key")
-                ),
-                "imgbb_configured": bool(
-                    config.get("imgbb_api_key")
-                )
-            })
+    "wavespeed_configured": bool(
+        config.get("wavespeed_api_key")
+    ),
+    "imgbb_configured": bool(
+        os.environ.get("IMGBB_API_KEY")
+    )
+})
 
             return
 
@@ -459,60 +459,7 @@ class WebHandler(SimpleHTTPRequestHandler):
 
             return
 
-        # ====================================================
-        # GUARDAR IMGBB
-        # ====================================================
 
-        if self.path == "/api/save-imgbb-key":
-
-            try:
-                body = read_body(self)
-
-                data = json.loads(
-                    body.decode("utf-8")
-                )
-
-                key = data.get(
-                    "api_key",
-                    ""
-                ).strip()
-
-                if not key:
-                    send_json(
-                        self,
-                        {
-                            "success": False,
-                            "error": "La API key de ImgBB está vacía."
-                        },
-                        400
-                    )
-                    return
-
-                config = load_config()
-
-                config["imgbb_api_key"] = key
-
-                save_config(config)
-
-                send_json(
-                    self,
-                    {
-                        "success": True
-                    }
-                )
-
-            except Exception as e:
-
-                send_json(
-                    self,
-                    {
-                        "success": False,
-                        "error": str(e)
-                    },
-                    500
-                )
-
-            return
 
         # ====================================================
         # BORRAR WAVE SPEED
@@ -538,29 +485,6 @@ class WebHandler(SimpleHTTPRequestHandler):
 
             return
 
-        # ====================================================
-        # BORRAR IMGBB
-        # ====================================================
-
-        if self.path == "/api/delete-imgbb-key":
-
-            config = load_config()
-
-            config.pop(
-                "imgbb_api_key",
-                None
-            )
-
-            save_config(config)
-
-            send_json(
-                self,
-                {
-                    "success": True
-                }
-            )
-
-            return
 
         # ====================================================
         # PROBAR SUBIDA A IMGBB
@@ -587,15 +511,13 @@ class WebHandler(SimpleHTTPRequestHandler):
                         "No se recibió ninguna imagen."
                     )
 
-                config = load_config()
-
-                imgbb_key = config.get(
-                    "imgbb_api_key"
-                )
+                imgbb_key = os.environ.get(
+    "IMGBB_API_KEY"
+)
 
                 if not imgbb_key:
                     raise ValueError(
-                        "No hay una API key de ImgBB configurada."
+                        "No hay una API key de ImgBB configurada en el servidor."
                     )
 
                 image = files["image"]
@@ -783,9 +705,9 @@ class WebHandler(SimpleHTTPRequestHandler):
                     "wavespeed_api_key"
                 )
 
-                imgbb_key = config.get(
-                    "imgbb_api_key"
-                )
+                imgbb_key = os.environ.get(
+    "IMGBB_API_KEY"
+)
 
                 if not wavespeed_key:
                     raise ValueError(
@@ -794,7 +716,7 @@ class WebHandler(SimpleHTTPRequestHandler):
 
                 if not imgbb_key:
                     raise ValueError(
-                        "No hay una API key de ImgBB configurada."
+                        "No hay una API key de ImgBB configurada en el servidor."
                     )
 
                 # ------------------------------------------------

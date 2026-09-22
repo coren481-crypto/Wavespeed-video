@@ -223,7 +223,7 @@ button.danger {
 
 <div class="card">
 
-<h2>🔑 API Keys</h2>
+<h2>🔑 WaveSpeed API</h2>
 
 <label>WaveSpeed API Key</label>
 
@@ -249,36 +249,6 @@ Borrar
 </div>
 
 <div id="wavespeedStatus" class="status">
-Comprobando...
-</div>
-
-
-<br>
-
-<label>ImgBB API Key</label>
-
-<div class="key-row">
-
-<input
-    id="imgbbKey"
-    type="password"
-    placeholder="ImgBB API key"
->
-
-<button onclick="saveImgBBKey()">
-Guardar
-</button>
-
-<button
-    class="danger"
-    onclick="deleteImgBBKey()"
->
-Borrar
-</button>
-
-</div>
-
-<div id="imgbbStatus" class="status">
 Comprobando...
 </div>
 
@@ -324,17 +294,6 @@ Eliminar
 
 </div>
 
-<button
-    onclick="testImgBBUpload()"
-    style="margin-top:10px; width:100%;"
->
-🧪 Probar subida a ImgBB
-</button>
-
-<div
-    id="imgbbTestResult"
-    class="status"
-></div>
 
 <input
     id="imageInput"
@@ -560,42 +519,31 @@ let selectedImage = null;
 // ========================================================
 
 async function checkApiStatus() {
-
+    
     try {
-
+        
         const response = await fetch(
             "/api/status"
         );
-
+        
         const data = await response.json();
-
+        
         document.getElementById(
-            "wavespeedStatus"
-        ).textContent =
-            data.wavespeed_configured
-            ? "🟢 WaveSpeed configurado"
-            : "🔴 WaveSpeed no configurado";
-
-
-        document.getElementById(
-            "imgbbStatus"
-        ).textContent =
-            data.imgbb_configured
-            ? "🟢 ImgBB configurado"
-            : "🔴 ImgBB no configurado";
-
+                "wavespeedStatus"
+            ).textContent =
+            data.wavespeed_configured ?
+            "🟢 WaveSpeed configurado" :
+            "🔴 WaveSpeed no configurado";
+        
     } catch (error) {
-
+        
         document.getElementById(
-            "wavespeedStatus"
-        ).textContent =
+                "wavespeedStatus"
+            ).textContent =
             "🔴 No se pudo conectar con el servidor";
-
-        document.getElementById(
-            "imgbbStatus"
-        ).textContent = "";
-
+        
     }
+    
 
 }
 
@@ -1012,222 +960,6 @@ async function generateVideo() {
 
 }
 
-
-// ========================================================
-// PRUEBA IMGBB
-// ========================================================
-
-async function testImgBBUpload() {
-
-    if (!selectedImage) {
-        alert("Primero selecciona una imagen.");
-        return;
-    }
-
-    const result =
-        document.getElementById("imgbbTestResult");
-
-    result.textContent =
-        "⏳ Subiendo imagen a ImgBB...";
-
-    const formData =
-        new FormData();
-
-    formData.append(
-        "image",
-        selectedImage
-    );
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/upload-image",
-                {
-                    method: "POST",
-                    body: formData
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.success) {
-
-            throw new Error(
-                data.error ||
-                "La subida falló."
-            );
-        }
-
-        result.innerHTML =
-            '✅ Imagen subida correctamente.<br>' +
-            '<a href="' +
-            data.url +
-            '" target="_blank">' +
-            'Abrir imagen en ImgBB' +
-            '</a>';
-
-        console.log(
-            "URL ImgBB:",
-            data.url
-        );
-
-    } catch (error) {
-
-        result.textContent =
-            "❌ " + error.message;
-
-        console.error(error);
-
-    }
-
-}
-
-
-// ========================================================
-// PRUEBA IMGBB
-// ========================================================
-
-async function testImgBBUpload() {
-
-    if (!selectedImage) {
-        alert("Primero selecciona una imagen.");
-        return;
-    }
-
-    const result =
-        document.getElementById("imgbbTestResult");
-
-    result.textContent =
-        "⏳ Subiendo imagen a ImgBB...";
-
-    const formData =
-        new FormData();
-
-    formData.append(
-        "image",
-        selectedImage
-    );
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/upload-image",
-                {
-                    method: "POST",
-                    body: formData
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.success) {
-
-            throw new Error(
-                data.error ||
-                "La subida falló."
-            );
-        }
-
-        result.innerHTML =
-            '✅ Imagen subida correctamente.<br>' +
-            '<a href="' +
-            data.url +
-            '" target="_blank">' +
-            'Abrir imagen en ImgBB' +
-            '</a>';
-
-        console.log(
-            "URL ImgBB:",
-            data.url
-        );
-
-    } catch (error) {
-
-        result.textContent =
-            "❌ " + error.message;
-
-        console.error(error);
-
-    }
-
-}
-
-
-
-// ========================================================
-// PRUEBA IMGBB
-// ========================================================
-
-async function testImgBBUpload() {
-
-    if (!selectedImage) {
-        alert("Primero selecciona una imagen.");
-        return;
-    }
-
-    const result =
-        document.getElementById("imgbbTestResult");
-
-    result.textContent =
-        "⏳ Subiendo imagen a ImgBB...";
-
-    const formData =
-        new FormData();
-
-    formData.append(
-        "image",
-        selectedImage
-    );
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/upload-image",
-                {
-                    method: "POST",
-                    body: formData
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.success) {
-
-            throw new Error(
-                data.error ||
-                "La subida falló."
-            );
-        }
-
-        result.innerHTML =
-            '✅ Imagen subida correctamente.<br>' +
-            '<a href="' +
-            data.url +
-            '" target="_blank">' +
-            'Abrir imagen en ImgBB' +
-            '</a>';
-
-        console.log(
-            "URL ImgBB:",
-            data.url
-        );
-
-    } catch (error) {
-
-        result.textContent =
-            "❌ " + error.message;
-
-        console.error(error);
-
-    }
-
-}
 
 
 // ========================================================
