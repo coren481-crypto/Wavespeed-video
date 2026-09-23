@@ -1403,6 +1403,72 @@ function wsHeaders(extra) {
     );
 }
 
+/* Lanza una generación en el servidor y espera el resultado consultando
+   /api/job/<id>. Así una conexión cortada o un proxy con timeout no
+   pierden la imagen: el trabajo sigue en el servidor. */
+async function postJob(url, options) {
+
+    const response = await fetch(url, options);
+
+    let data;
+
+    try {
+        data = await response.json();
+    } catch (e) {
+        throw new Error(
+            "El servidor no respondió correctamente (HTTP "
+            + response.status + ")."
+        );
+    }
+
+    if (!data.success || !data.job_id) {
+        return data;
+    }
+
+    let failures = 0;
+
+    while (true) {
+
+        await new Promise(function (resolve) {
+            setTimeout(resolve, 3000);
+        });
+
+        let job;
+
+        try {
+            const r = await fetch("/api/job/" + data.job_id);
+            job = await r.json();
+            failures = 0;
+        } catch (e) {
+            // Corte momentáneo (p. ej. móvil en segundo plano): reintentar
+            failures++;
+
+            if (failures >= 40) {
+                throw new Error(
+                    "Se perdió la conexión con el servidor."
+                );
+            }
+
+            continue;
+        }
+
+        if (!job.success) {
+            throw new Error(
+                job.error || "Error consultando el trabajo."
+            );
+        }
+
+        if (job.status === "done") {
+            return job.result;
+        }
+
+        if (job.status === "error") {
+            return { success: false, error: job.error };
+        }
+    }
+}
+
+
 async function checkStatus() {
 
     const status =
@@ -1717,7 +1783,7 @@ async function createImage() {
 
     try {
 
-        const response = await fetch(
+        const data = await postJob(
             "/api/generate-image",
             {
                 method: "POST",
@@ -1754,9 +1820,6 @@ async function createImage() {
                 })
             }
         );
-
-        const data =
-            await response.json();
 
         if (!data.success) {
 
@@ -1908,7 +1971,7 @@ async function editImage() {
             );
         }
 
-        const response = await fetch(
+        const data = await postJob(
             "/api/edit-image",
             {
                 method: "POST",
@@ -1916,9 +1979,6 @@ async function editImage() {
                 body: formData
             }
         );
-
-        const data =
-            await response.json();
 
         if (!data.success) {
 
@@ -2266,7 +2326,7 @@ async function generateVideo() {
         }
 
 
-        const response = await fetch(
+        const data = await postJob(
             "/api/generate",
             {
                 method: "POST",
@@ -2274,9 +2334,6 @@ async function generateVideo() {
                 body: formData
             }
         );
-
-        const data =
-            await response.json();
 
         if (!data.success) {
 

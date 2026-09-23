@@ -2,6 +2,8 @@ import json
 import os
 import re
 import time
+import threading
+import uuid
 import mimetypes
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
@@ -79,11 +81,15 @@ def get_wavespeed_key(handler):
 def send_json(handler, data, status=200):
     body = json.dumps(data, ensure_ascii=False).encode("utf-8")
 
-    handler.send_response(status)
-    handler.send_header("Content-Type", "application/json; charset=utf-8")
-    handler.send_header("Content-Length", str(len(body)))
-    handler.end_headers()
-    handler.wfile.write(body)
+    try:
+        handler.send_response(status)
+        handler.send_header("Content-Type", "application/json; charset=utf-8")
+        handler.send_header("Content-Length", str(len(body)))
+        handler.end_headers()
+        handler.wfile.write(body)
+    except (BrokenPipeError, ConnectionResetError):
+        # El cliente (o el proxy) ya cerró la conexión; no hay a quién responder.
+        pass
 
 
 def read_body(handler):
@@ -453,6 +459,44 @@ def generate_video(prompt, image_url, resolution, aspect_ratio, duration,
 
 
 # ============================================================
+# BACKGROUND JOBS
+# ============================================================
+# Las generaciones pueden tardar minutos y el proxy de Codespaces
+# (o el móvil) puede cortar la conexión. Por eso el POST devuelve un
+# job_id al instante y el navegador consulta /api/job/<id> hasta que
+# termina. La API key solo existe en memoria durante el trabajo.
+
+JOBS = {}
+JOBS_LOCK = threading.Lock()
+JOB_TTL = 3600
+
+
+def start_job(work):
+    now = time.time()
+    job_id = uuid.uuid4().hex
+
+    with JOBS_LOCK:
+        for old_id in [j for j, v in JOBS.items() if now - v["created"] > JOB_TTL]:
+            del JOBS[old_id]
+
+        JOBS[job_id] = {"status": "running", "created": now}
+
+    def runner():
+        try:
+            update = {"status": "done", "result": work()}
+        except Exception as e:
+            print("\n[ERROR]", repr(e))
+            update = {"status": "error", "error": str(e)}
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id].update(update)
+
+    threading.Thread(target=runner, daemon=True).start()
+    return job_id
+
+
+# ============================================================
 # HTTP HANDLER
 # ============================================================
 
@@ -471,6 +515,29 @@ class Handler(BaseHTTPRequestHandler):
             send_json(self, {
                 "success": True,
                 "imgbb_configured": bool(os.environ.get("IMGBB_API_KEY"))
+            })
+
+            return
+
+        job_prefix = "/api/job/"
+        job_path = self.path.split("?", 1)[0]
+
+        if job_path.startswith(job_prefix):
+            with JOBS_LOCK:
+                job = dict(JOBS.get(job_path[len(job_prefix):]) or {})
+
+            if not job:
+                send_json(self, {
+                    "success": False,
+                    "error": "Trabajo no encontrado (¿se reinició el servidor?)."
+                }, 404)
+                return
+
+            send_json(self, {
+                "success": True,
+                "status": job["status"],
+                "result": job.get("result"),
+                "error": job.get("error")
             })
 
             return
@@ -556,18 +623,20 @@ class Handler(BaseHTTPRequestHandler):
                 if prompt_optimization_mode not in {"standard", "fast"}:
                     raise RuntimeError("Modo de optimización no válido.")
 
-                prediction_id, image_url, result = generate_image(
-                    prompt, aspect_ratio, resolution, output_format,
-                    prompt_optimization_mode, api_key
-                )
+                def work():
+                    prediction_id, image_url, result = generate_image(
+                        prompt, aspect_ratio, resolution, output_format,
+                        prompt_optimization_mode, api_key
+                    )
 
-                send_json(self, {
-                    "success": True,
-                    "prediction_id": prediction_id,
-                    "image_url": image_url,
-                    "outputs": result.get("outputs", [])
-                })
+                    return {
+                        "success": True,
+                        "prediction_id": prediction_id,
+                        "image_url": image_url,
+                        "outputs": result.get("outputs", [])
+                    }
 
+                send_json(self, {"success": True, "job_id": start_job(work)})
                 return
 
             # =================================================
@@ -605,30 +674,31 @@ class Handler(BaseHTTPRequestHandler):
                         "Falta el secreto IMGBB_API_KEY en Codespaces."
                     )
 
-                image_urls = []
+                def work():
+                    image_urls = []
 
-                for file_info in files:
-                    image_url = upload_to_imgbb(
-                        file_info["data"],
-                        file_info["filename"],
-                        imgbb_key,
-                        file_info["content_type"]
+                    for file_info in files:
+                        image_urls.append(upload_to_imgbb(
+                            file_info["data"],
+                            file_info["filename"],
+                            imgbb_key,
+                            file_info["content_type"]
+                        ))
+
+                    prediction_id, image_url, result = edit_image(
+                        prompt, image_urls, aspect_ratio, resolution,
+                        output_format, prompt_optimization_mode, api_key
                     )
-                    image_urls.append(image_url)
 
-                prediction_id, image_url, result = edit_image(
-                    prompt, image_urls, aspect_ratio, resolution,
-                    output_format, prompt_optimization_mode, api_key
-                )
+                    return {
+                        "success": True,
+                        "prediction_id": prediction_id,
+                        "image_url": image_url,
+                        "reference_images": image_urls,
+                        "outputs": result.get("outputs", [])
+                    }
 
-                send_json(self, {
-                    "success": True,
-                    "prediction_id": prediction_id,
-                    "image_url": image_url,
-                    "reference_images": image_urls,
-                    "outputs": result.get("outputs", [])
-                })
-
+                send_json(self, {"success": True, "job_id": start_job(work)})
                 return
 
             # =================================================
@@ -692,29 +762,35 @@ class Handler(BaseHTTPRequestHandler):
                         )
 
                     first_file = files[0]
-                    image_url = upload_to_imgbb(
-                        first_file["data"],
-                        first_file["filename"],
-                        imgbb_key,
-                        first_file["content_type"]
+
+                # ---------------------------------------------
+                # Subir (si hace falta) y generar video
+                # ---------------------------------------------
+
+                def work():
+                    final_url = image_url
+
+                    if not final_url:
+                        final_url = upload_to_imgbb(
+                            first_file["data"],
+                            first_file["filename"],
+                            imgbb_key,
+                            first_file["content_type"]
+                        )
+
+                    prediction_id, outputs, result = generate_video(
+                        prompt, final_url, resolution, aspect_ratio, duration,
+                        enable_audio, enable_prompt_expansion, api_key
                     )
 
-                # ---------------------------------------------
-                # Generar video
-                # ---------------------------------------------
+                    return {
+                        "success": True,
+                        "prediction_id": prediction_id,
+                        "image_url": final_url,
+                        "outputs": outputs
+                    }
 
-                prediction_id, outputs, result = generate_video(
-                    prompt, image_url, resolution, aspect_ratio, duration,
-                    enable_audio, enable_prompt_expansion, api_key
-                )
-
-                send_json(self, {
-                    "success": True,
-                    "prediction_id": prediction_id,
-                    "image_url": image_url,
-                    "outputs": outputs
-                })
-
+                send_json(self, {"success": True, "job_id": start_job(work)})
                 return
 
             # =================================================
