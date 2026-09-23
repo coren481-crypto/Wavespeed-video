@@ -243,6 +243,175 @@ button:disabled {
     margin-bottom: 5px;
 }
 
+/* -------------------------------------------
+   THUMBNAIL PREVIEWS
+------------------------------------------- */
+
+.thumb-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.thumb-item {
+    position: relative;
+    width: 84px;
+    height: 84px;
+}
+
+.thumb-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid #303640;
+    display: block;
+}
+
+.single-thumb {
+    margin-top: 12px;
+    position: relative;
+    display: inline-block;
+}
+
+.single-thumb img {
+    max-width: 220px;
+    max-height: 220px;
+    border-radius: 12px;
+    border: 1px solid #303640;
+    display: block;
+}
+
+.thumb-remove {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #54252b;
+    color: white;
+    border: 2px solid #0d0f12;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+.thumb-remove:hover {
+    background: #7a3540;
+}
+
+
+/* ==========================================================
+   CUSTOM COMPACT DROPDOWNS
+========================================================== */
+.custom-select {
+    position: relative;
+    width: 100%;
+}
+.custom-select-trigger {
+    width: 100%;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid #303640;
+    background: #0f1115;
+    color: white;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 400;
+    text-align: left;
+    cursor: pointer;
+}
+.custom-select-trigger:hover,
+.custom-select.open .custom-select-trigger {
+    border-color: #6f7cff;
+}
+.custom-select-arrow {
+    flex: 0 0 auto;
+    color: #8f96a3;
+    font-size: 11px;
+    transition: transform .15s ease;
+}
+.custom-select.open .custom-select-arrow {
+    transform: rotate(180deg);
+}
+.custom-select-menu {
+    position: absolute;
+    z-index: 1000;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    max-height: 220px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    background: #15181d;
+    border: 1px solid #303640;
+    border-radius: 10px;
+    padding: 5px;
+    box-shadow: 0 12px 28px rgba(0,0,0,.45);
+    display: none;
+}
+.custom-select.open .custom-select-menu {
+    display: block;
+}
+.custom-select-option {
+    width: 100%;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    padding: 9px 11px;
+    border-radius: 7px;
+    background: transparent;
+    color: #f1f1f1;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+}
+.custom-select-option:hover,
+.custom-select-option:focus {
+    background: #272c34;
+    outline: none;
+}
+.custom-select-option.selected {
+    background: #1b1e29;
+}
+.custom-select-option.selected::after {
+    content: "✓";
+    margin-left: auto;
+    color: #6f7cff;
+    font-weight: 700;
+}
+.custom-select-menu::-webkit-scrollbar {
+    width: 7px;
+}
+.custom-select-menu::-webkit-scrollbar-thumb {
+    background: #3a404b;
+    border-radius: 10px;
+}
+.custom-select-menu {
+    scrollbar-width: thin;
+    scrollbar-color: #3a404b transparent;
+}
+.custom-select-native {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 @media (max-width: 700px) {
 
     .grid {
@@ -421,6 +590,11 @@ button:disabled {
                 Ninguna imagen seleccionada.
             </div>
 
+            <div
+                id="editThumbGrid"
+                class="thumb-grid"
+            ></div>
+
         </div>
 
 
@@ -448,7 +622,8 @@ button:disabled {
                     Relación de aspecto
                 </label>
 
-                <select id="imageAspect">
+                <div class="custom-select" data-select-id="imageAspect">
+    <select id="imageAspect" class="custom-select-native">
 
                     <option value="9:16">
                         9:16
@@ -511,6 +686,7 @@ button:disabled {
                     </option>
 
                 </select>
+</div>
 
             </div>
 
@@ -521,7 +697,8 @@ button:disabled {
                     Resolución
                 </label>
 
-                <select id="imageResolution">
+                <div class="custom-select" data-select-id="imageResolution">
+    <select id="imageResolution" class="custom-select-native">
 
                     <option value="1k">
                         1K
@@ -536,6 +713,7 @@ button:disabled {
                     </option>
 
                 </select>
+</div>
 
             </div>
 
@@ -546,7 +724,8 @@ button:disabled {
                     Formato
                 </label>
 
-                <select id="imageFormat">
+                <div class="custom-select" data-select-id="imageFormat">
+    <select id="imageFormat" class="custom-select-native">
 
                     <option value="jpeg">
                         JPEG
@@ -557,6 +736,7 @@ button:disabled {
                     </option>
 
                 </select>
+</div>
 
             </div>
 
@@ -567,7 +747,8 @@ button:disabled {
                     Optimización del prompt
                 </label>
 
-                <select id="imageOptimization">
+                <div class="custom-select" data-select-id="imageOptimization">
+    <select id="imageOptimization" class="custom-select-native">
 
                     <option value="standard">
                         Standard
@@ -578,6 +759,7 @@ button:disabled {
                     </option>
 
                 </select>
+</div>
 
             </div>
 
@@ -673,6 +855,23 @@ button:disabled {
             directamente una imagen generada arriba.
         </div>
 
+        <div
+            id="videoImagePreviewBox"
+            class="single-thumb hidden"
+        >
+            <img
+                id="videoImagePreview"
+                alt="Vista previa"
+            >
+
+            <button
+                type="button"
+                class="thumb-remove"
+                onclick="removeVideoImage()"
+                title="Quitar imagen"
+            >×</button>
+        </div>
+
 
         <label>
             Prompt
@@ -709,7 +908,8 @@ button:disabled {
                     Relación de aspecto
                 </label>
 
-                <select id="videoAspect">
+                <div class="custom-select" data-select-id="videoAspect">
+    <select id="videoAspect" class="custom-select-native">
 
                     <option value="9:16">
                         9:16
@@ -732,6 +932,7 @@ button:disabled {
                     </option>
 
                 </select>
+</div>
 
             </div>
 
@@ -742,7 +943,8 @@ button:disabled {
                     Resolución
                 </label>
 
-                <select id="videoResolution">
+                <div class="custom-select" data-select-id="videoResolution">
+    <select id="videoResolution" class="custom-select-native">
 
                     <option value="480p">
                         480p
@@ -760,6 +962,7 @@ button:disabled {
                     </option>
 
                 </select>
+</div>
 
             </div>
 
@@ -1054,8 +1257,136 @@ async function deleteKey() {
 
 
 /* ==========================================================
-   IMAGE FILE LIST
+   IMAGE FILE LIST + PREVIEWS (EDIT MODE)
 ========================================================== */
+
+let editFiles = [];
+
+
+function syncEditInput() {
+
+    const dataTransfer =
+        new DataTransfer();
+
+    editFiles.forEach(
+        function(file) {
+            dataTransfer.items.add(file);
+        }
+    );
+
+    document.getElementById(
+        "editImages"
+    ).files =
+        dataTransfer.files;
+}
+
+
+function renderEditThumbs() {
+
+    const list =
+        document.getElementById(
+            "editFileList"
+        );
+
+    const thumbGrid =
+        document.getElementById(
+            "editThumbGrid"
+        );
+
+    thumbGrid.innerHTML = "";
+
+    if (!editFiles.length) {
+
+        list.textContent =
+            "Ninguna imagen seleccionada.";
+
+        return;
+    }
+
+    list.textContent =
+        `${editFiles.length} imagen(es): ` +
+        editFiles
+            .map(file => file.name)
+            .join(", ");
+
+    editFiles.forEach(
+        function(file, index) {
+
+            const reader =
+                new FileReader();
+
+            reader.onload =
+                function(event) {
+
+                    const item =
+                        document.createElement(
+                            "div"
+                        );
+
+                    item.className =
+                        "thumb-item";
+
+                    const img =
+                        document.createElement(
+                            "img"
+                        );
+
+                    img.src =
+                        event.target.result;
+
+                    img.alt =
+                        file.name;
+
+                    const removeBtn =
+                        document.createElement(
+                            "button"
+                        );
+
+                    removeBtn.type =
+                        "button";
+
+                    removeBtn.className =
+                        "thumb-remove";
+
+                    removeBtn.title =
+                        "Quitar imagen";
+
+                    removeBtn.textContent =
+                        "×";
+
+                    removeBtn.onclick =
+                        function() {
+                            removeEditFile(index);
+                        };
+
+                    item.appendChild(
+                        img
+                    );
+
+                    item.appendChild(
+                        removeBtn
+                    );
+
+                    thumbGrid.appendChild(
+                        item
+                    );
+                };
+
+            reader.readAsDataURL(
+                file
+            );
+        }
+    );
+}
+
+
+function removeEditFile(index) {
+
+    editFiles.splice(index, 1);
+    syncEditInput();
+    renderEditThumbs();
+}
+
 
 document.getElementById(
     "editImages"
@@ -1063,35 +1394,23 @@ document.getElementById(
     "change",
     function() {
 
-        const files =
-            this.files;
+        let selected =
+            Array.from(this.files);
 
-        const list =
-            document.getElementById(
-                "editFileList"
+        if (selected.length > 10) {
+
+            alert(
+                "Puedes seleccionar como máximo 10 imágenes."
             );
 
-        if (!files.length) {
-
-            list.textContent =
-                "Ninguna imagen seleccionada.";
-
-            return;
+            selected =
+                selected.slice(0, 10);
         }
 
-        if (files.length > 10) {
+        editFiles = selected;
 
-            list.textContent =
-                "⚠️ Máximo 10 imágenes.";
-
-            return;
-        }
-
-        list.textContent =
-            `${files.length} imagen(es): ` +
-            Array.from(files)
-                .map(file => file.name)
-                .join(", ");
+        syncEditInput();
+        renderEditThumbs();
     }
 );
 
@@ -1415,6 +1734,23 @@ function useImageForVideo() {
         "videoImage"
     ).value = "";
 
+    const previewBox =
+        document.getElementById(
+            "videoImagePreviewBox"
+        );
+
+    const preview =
+        document.getElementById(
+            "videoImagePreview"
+        );
+
+    preview.src =
+        generatedImageUrl;
+
+    previewBox.classList.remove(
+        "hidden"
+    );
+
     document.getElementById(
         "videoPrompt"
     ).focus();
@@ -1454,7 +1790,40 @@ async function copyImageUrl() {
 
 
 /* ==========================================================
-   VIDEO FILE
+   REMOVE VIDEO IMAGE
+========================================================== */
+
+function removeVideoImage() {
+
+    generatedImageUrl = "";
+
+    const input =
+        document.getElementById(
+            "videoImage"
+        );
+
+    input.value = "";
+
+    document.getElementById(
+        "videoImagePreviewBox"
+    ).classList.add(
+        "hidden"
+    );
+
+    document.getElementById(
+        "videoImagePreview"
+    ).src = "";
+
+    document.getElementById(
+        "videoImageInfo"
+    ).textContent =
+        "Puedes subir una imagen o utilizar "
+        + "directamente una imagen generada arriba.";
+}
+
+
+/* ==========================================================
+   VIDEO FILE + PREVIEW
 ========================================================== */
 
 document.getElementById(
@@ -1463,17 +1832,53 @@ document.getElementById(
     "change",
     function() {
 
+        const previewBox =
+            document.getElementById(
+                "videoImagePreviewBox"
+            );
+
+        const preview =
+            document.getElementById(
+                "videoImagePreview"
+            );
+
         if (!this.files.length) {
+
+            previewBox.classList.add(
+                "hidden"
+            );
+
             return;
         }
 
         generatedImageUrl = "";
 
+        const file =
+            this.files[0];
+
         document.getElementById(
             "videoImageInfo"
         ).textContent =
             "📷 " +
-            this.files[0].name;
+            file.name;
+
+        const reader =
+            new FileReader();
+
+        reader.onload =
+            function(event) {
+
+                preview.src =
+                    event.target.result;
+
+                previewBox.classList.remove(
+                    "hidden"
+                );
+            };
+
+        reader.readAsDataURL(
+            file
+        );
     }
 );
 
@@ -1677,6 +2082,108 @@ async function generateVideo() {
     }
 }
 
+
+
+/* ==========================================================
+   CUSTOM COMPACT DROPDOWNS
+========================================================== */
+function closeAllCustomSelects(except = null) {
+    document.querySelectorAll(".custom-select.open").forEach(function(el) {
+        if (el !== except) el.classList.remove("open");
+    });
+}
+
+function updateCustomSelect(wrapper) {
+    const nativeSelect = wrapper.querySelector("select");
+    const trigger = wrapper.querySelector(".custom-select-trigger");
+    if (!nativeSelect || !trigger) return;
+
+    const label = trigger.querySelector(".custom-select-label");
+    const selected = nativeSelect.options[nativeSelect.selectedIndex];
+
+    label.textContent = selected ? selected.textContent.trim() : "";
+
+    wrapper.querySelectorAll(".custom-select-option").forEach(function(item) {
+        const active = item.dataset.value === nativeSelect.value;
+        item.classList.toggle("selected", active);
+        item.setAttribute("aria-selected", active ? "true" : "false");
+    });
+}
+
+function setupCustomSelect(wrapper) {
+    const nativeSelect = wrapper.querySelector("select");
+    if (!nativeSelect) return;
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "custom-select-trigger";
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+
+    const label = document.createElement("span");
+    label.className = "custom-select-label";
+
+    const arrow = document.createElement("span");
+    arrow.className = "custom-select-arrow";
+    arrow.textContent = "▼";
+
+    trigger.append(label, arrow);
+
+    const menu = document.createElement("div");
+    menu.className = "custom-select-menu";
+    menu.setAttribute("role", "listbox");
+
+    Array.from(nativeSelect.options).forEach(function(option) {
+        const item = document.createElement("div");
+        item.className = "custom-select-option";
+        item.textContent = option.textContent.trim();
+        item.dataset.value = option.value;
+        item.setAttribute("role", "option");
+        item.tabIndex = 0;
+
+        item.addEventListener("click", function(event) {
+            event.stopPropagation();
+            nativeSelect.value = option.value;
+            nativeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+            updateCustomSelect(wrapper);
+            closeAllCustomSelects();
+        });
+
+        item.addEventListener("keydown", function(event) {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                item.click();
+            }
+        });
+
+        menu.appendChild(item);
+    });
+
+    trigger.addEventListener("click", function(event) {
+        event.stopPropagation();
+        const wasOpen = wrapper.classList.contains("open");
+        closeAllCustomSelects();
+
+        if (!wasOpen) {
+            wrapper.classList.add("open");
+            trigger.setAttribute("aria-expanded", "true");
+        }
+    });
+
+    wrapper.insertBefore(trigger, nativeSelect);
+    wrapper.appendChild(menu);
+    updateCustomSelect(wrapper);
+}
+
+document.querySelectorAll(".custom-select").forEach(setupCustomSelect);
+
+document.addEventListener("click", function() {
+    closeAllCustomSelects();
+});
+
+document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") closeAllCustomSelects();
+});
 
 /* ==========================================================
    START
