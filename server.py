@@ -18,7 +18,6 @@ PORT = 8000
 
 BASE_DIR = Path(__file__).resolve().parent
 WEB_DIR = BASE_DIR / "web"
-CONFIG_FILE = BASE_DIR / "config.json"
 
 # Tiempo máximo (segundos) esperando el resultado de una predicción
 POLL_TIMEOUT = 900
@@ -55,23 +54,22 @@ IMGBB_URL = "https://api.imgbb.com/1/upload"
 
 
 # ============================================================
-# CONFIG FILE
+# WAVESPEED API KEY (por petición)
 # ============================================================
+# El servidor NO guarda la key. Cada usuario la guarda en el
+# localStorage de su navegador y la envía en la cabecera
+# X-WaveSpeed-Key con cada petición.
 
-def load_config():
-    if not CONFIG_FILE.exists():
-        return {}
-
-    try:
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+WAVESPEED_KEY_HEADER = "X-WaveSpeed-Key"
 
 
-def save_config(config):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=2)
+def get_wavespeed_key(handler):
+    api_key = handler.headers.get(WAVESPEED_KEY_HEADER, "").strip()
+
+    if not api_key:
+        raise RuntimeError("Primero configura tu WaveSpeed API Key.")
+
+    return api_key
 
 
 # ============================================================
@@ -470,11 +468,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
 
         if self.path.split("?", 1)[0] == "/api/status":
-            config = load_config()
-
             send_json(self, {
                 "success": True,
-                "wavespeed_configured": bool(config.get("wavespeed_api_key")),
                 "imgbb_configured": bool(os.environ.get("IMGBB_API_KEY"))
             })
 
@@ -524,43 +519,6 @@ class Handler(BaseHTTPRequestHandler):
         try:
 
             # =================================================
-            # SAVE WAVESPEED KEY
-            # =================================================
-
-            if self.path == "/api/save-key":
-                body = read_body(self)
-                data = json.loads(body.decode("utf-8"))
-                api_key = data.get("api_key", "").strip()
-
-                if not api_key:
-                    send_json(self, {
-                        "success": False,
-                        "error": "API key vacía."
-                    }, 400)
-                    return
-
-                config = load_config()
-                config["wavespeed_api_key"] = api_key
-                config.pop("imgbb_api_key", None)
-                save_config(config)
-
-                send_json(self, {"success": True})
-                return
-
-            # =================================================
-            # DELETE WAVESPEED KEY
-            # =================================================
-
-            if self.path == "/api/delete-key":
-                config = load_config()
-                config.pop("wavespeed_api_key", None)
-                config.pop("imgbb_api_key", None)
-                save_config(config)
-
-                send_json(self, {"success": True})
-                return
-
-            # =================================================
             # GENERATE IMAGE
             # =================================================
 
@@ -576,11 +534,7 @@ class Handler(BaseHTTPRequestHandler):
                     "prompt_optimization_mode", "standard"
                 )
 
-                config = load_config()
-                api_key = config.get("wavespeed_api_key")
-
-                if not api_key:
-                    raise RuntimeError("Primero configura tu WaveSpeed API Key.")
+                api_key = get_wavespeed_key(self)
 
                 if not prompt:
                     raise RuntimeError("El prompt de imagen está vacío.")
@@ -643,12 +597,8 @@ class Handler(BaseHTTPRequestHandler):
                         "Seedream permite hasta 10 imágenes de referencia."
                     )
 
-                config = load_config()
-                api_key = config.get("wavespeed_api_key")
+                api_key = get_wavespeed_key(self)
                 imgbb_key = os.environ.get("IMGBB_API_KEY")
-
-                if not api_key:
-                    raise RuntimeError("Primero configura tu WaveSpeed API Key.")
 
                 if not imgbb_key:
                     raise RuntimeError(
@@ -703,12 +653,8 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError:
                     raise RuntimeError("Duración no válida.")
 
-                config = load_config()
-                api_key = config.get("wavespeed_api_key")
+                api_key = get_wavespeed_key(self)
                 imgbb_key = os.environ.get("IMGBB_API_KEY")
-
-                if not api_key:
-                    raise RuntimeError("Primero configura tu WaveSpeed API Key.")
 
                 if not prompt:
                     raise RuntimeError("El prompt está vacío.")
@@ -805,6 +751,9 @@ if __name__ == "__main__":
     print(" - Seedream V5.0 Pro")
     print(" - Seedream V5.0 Pro Edit")
     print(" - Wan 3.0 Reference-to-Video")
+    print()
+    print(" WaveSpeed:")
+    print(" - API key en el navegador de cada usuario (no se guarda aquí)")
     print()
     print(" ImgBB:")
     print(" - IMGBB_API_KEY desde Codespaces Secrets")
