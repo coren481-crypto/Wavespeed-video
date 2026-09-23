@@ -161,6 +161,38 @@ button:disabled {
     white-space: pre-wrap;
 }
 
+/* Barra de carga indeterminada mientras se genera */
+.loading-bar {
+    position: relative;
+    height: 6px;
+    margin-top: 12px;
+    border-radius: 999px;
+    background: #272c34;
+    overflow: hidden;
+}
+
+.loading-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 35%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #6f7cff, #a4acff);
+    animation: loading-slide 1.3s ease-in-out infinite;
+}
+
+@keyframes loading-slide {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(300%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading-bar-fill {
+        animation-duration: 3s;
+    }
+}
+
 .preview-box {
     margin-top: 20px;
     background: #0d0f12;
@@ -1403,6 +1435,43 @@ function wsHeaders(extra) {
     );
 }
 
+/* Barra de carga + temporizador dentro del contenedor de estado.
+   Se quita sola al escribir el resultado con status.textContent. */
+const activeLoaders = new WeakMap();
+
+function startLoading(status, message) {
+
+    stopLoading(status);
+
+    status.innerHTML =
+        '<div class="loading-text"></div>'
+        + '<div class="loading-bar">'
+        + '<div class="loading-bar-fill"></div>'
+        + '</div>';
+
+    const text = status.querySelector(".loading-text");
+    const started = Date.now();
+
+    function tick() {
+        const total = Math.floor((Date.now() - started) / 1000);
+        const minutes = Math.floor(total / 60);
+        const seconds = String(total % 60).padStart(2, "0");
+
+        text.textContent =
+            message + " (" + minutes + ":" + seconds + ")";
+    }
+
+    tick();
+    activeLoaders.set(status, setInterval(tick, 1000));
+}
+
+function stopLoading(status) {
+
+    clearInterval(activeLoaders.get(status));
+    activeLoaders.delete(status);
+}
+
+
 /* Lanza una generación en el servidor y espera el resultado consultando
    /api/job/<id>. Así una conexión cortada o un proxy con timeout no
    pierden la imagen: el trabajo sigue en el servidor. */
@@ -1778,8 +1847,7 @@ async function createImage() {
         "hidden"
     );
 
-    status.textContent =
-        "⏳ Generando imagen con Seedream V5.0 Pro...";
+    startLoading(status, "⏳ Generando imagen con Seedream V5.0 Pro...");
 
     try {
 
@@ -1851,6 +1919,7 @@ async function createImage() {
 
     } finally {
 
+        stopLoading(status);
         button.disabled = false;
     }
 }
@@ -1920,8 +1989,7 @@ async function editImage() {
         "hidden"
     );
 
-    status.textContent =
-        "⏳ Subiendo referencias y procesando con Seedream Edit...";
+    startLoading(status, "⏳ Subiendo referencias y procesando con Seedream Edit...");
 
     try {
 
@@ -2010,6 +2078,7 @@ async function editImage() {
 
     } finally {
 
+        stopLoading(status);
         button.disabled = false;
     }
 }
@@ -2263,8 +2332,7 @@ async function generateVideo() {
         "hidden"
     );
 
-    status.textContent =
-        "⏳ Procesando... enviando la imagen y el prompt a WaveSpeed.";
+    startLoading(status, "⏳ Procesando... enviando la imagen y el prompt a WaveSpeed.");
 
     try {
 
@@ -2377,6 +2445,7 @@ async function generateVideo() {
 
     } finally {
 
+        stopLoading(status);
         button.disabled = false;
     }
 }
