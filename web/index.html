@@ -1,7 +1,28 @@
 <!DOCTYPE html>
 <html lang="es">
 
-<head>
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
 
 <meta charset="UTF-8">
 
@@ -412,6 +433,202 @@ button:disabled {
     pointer-events: none !important;
 }
 
+
+
+/* API BAR - compact */
+.api-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: #15181d;
+    border: 1px solid #272c34;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.api-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 220px;
+}
+.api-bar-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+.api-bar-input {
+    flex: 1;
+    max-width: 360px;
+    border: 1px solid #303640 !important;
+    background: #0f1115 !important;
+    color: white !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+    outline: none;
+}
+.api-bar-input:focus {
+    border-color: #6f7cff !important;
+}
+.api-bar-status {
+    font-size: 12px;
+    color: #8f96a3;
+    white-space: nowrap;
+}
+.api-bar-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.api-btn {
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.api-btn.primary {
+    background: #6f7cff;
+    color: white;
+}
+.api-btn.danger {
+    background: #272c34;
+    color: #c9cdd6;
+}
+
+.api-connected-view {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.api-connected-view.hidden, .api-edit-view.hidden, .api-btn.hidden {
+    display: none !important;
+}
+.api-edit-view {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+.api-dot {
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(34,197,94,.6);
+    flex-shrink: 0;
+}
+.api-connected-text {
+    font-size: 14px;
+    font-weight: 700;
+    color: #e5e7eb;
+}
+.api-masked {
+    font-size: 12px;
+    color: #6b7280;
+    letter-spacing: 2px;
+}
+.api-btn.secondary {
+    background: #272c34;
+    color: #e5e7eb;
+}
+.api-btn.secondary:hover {
+    background: #323845;
+}
+
+.api-btn.danger:hover {
+    background: #54252b;
+    color: white;
+}
+@media (max-width: 600px) {
+    .api-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .api-bar-left {
+        flex-direction: row;
+        width: 100%;
+    }
+    .api-bar-input {
+        max-width: none;
+    }
+}
+
+/* ==========================================================
+   TABS LAYOUT - IMAGEN / VIDEO
+========================================================== */
+
+.tabs-wrapper {
+    margin-top: 10px;
+}
+
+.tabs-bar {
+    display: flex;
+    gap: 8px;
+    background: #15181d;
+    border: 1px solid #272c34;
+    border-radius: 14px;
+    padding: 6px;
+    width: fit-content;
+    margin-bottom: 18px;
+}
+
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #8f96a3;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .18s ease;
+    white-space: nowrap;
+}
+
+.tab-btn:hover {
+    background: #1e232c;
+    color: #e5e7eb;
+}
+
+.tab-btn.active {
+    background: #6f7cff;
+    border-color: #6f7cff;
+    color: white;
+    box-shadow: 0 4px 18px rgba(111,124,255,.35);
+}
+
+.tab-panel {
+    display: none;
+    animation: tabFade .22s ease;
+}
+
+.tab-panel.active {
+    display: block;
+}
+
+@keyframes tabFade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 700px) {
+    .tabs-bar {
+        width: 100%;
+    }
+    .tab-btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
 @media (max-width: 700px) {
 
     .grid {
@@ -448,55 +665,45 @@ button:disabled {
     </div>
 
 
-    <!-- =====================================================
-         API KEY
+        <!-- =====================================================
+         API KEY - COMPACT BAR with CONNECTED STATE
     ====================================================== -->
+    <div class="api-bar" id="apiBar">
+        <div class="api-bar-left">
+            <span class="api-bar-icon">🔑</span>
+            
+            <!-- Estado CONECTADO (oculto por defecto) -->
+            <div id="apiConnectedView" class="api-connected-view hidden">
+                <span class="api-dot"></span>
+                <span class="api-connected-text">API conectada</span>
+                <span class="api-masked">●●●● ●●●●</span>
+            </div>
 
-    <div class="card">
-
-        <h2>🔑 WaveSpeed API</h2>
-
-        <p class="description">
-            La clave se guarda localmente en
-            <code>config.json</code>.
-        </p>
-
-        <label>
-            WaveSpeed API Key
-        </label>
-
-        <input
-            id="apiKey"
-            type="password"
-            placeholder="wavespeed_..."
-        >
-
-        <div class="actions">
-
-            <button
-                class="primary"
-                onclick="saveKey()"
-            >
-                Guardar API Key
-            </button>
-
-            <button
-                class="danger"
-                onclick="deleteKey()"
-            >
-                Eliminar
-            </button>
-
+            <!-- Input EDIT -->
+            <div id="apiEditView" class="api-edit-view">
+                <input id="apiKey" type="password" placeholder="wavespeed_... API Key" class="api-bar-input">
+                <span id="keyStatus" class="api-bar-status">Comprobando...</span>
+            </div>
         </div>
-
-        <div
-            id="keyStatus"
-            class="key-status"
-        >
-            Comprobando...
+        <div class="api-bar-actions">
+            <button id="apiSaveBtn" class="api-btn primary" onclick="saveKey()">Guardar</button>
+            <button id="apiEditBtn" class="api-btn secondary hidden" onclick="editKeyMode()">Cambiar</button>
+            <button id="apiDeleteBtn" class="api-btn danger" onclick="deleteKey()" title="Eliminar">✕</button>
         </div>
-
     </div>
+
+
+    <div class="tabs-wrapper">
+    <div class="tabs-bar" role="tablist">
+        <button id="tabBtnImage" class="tab-btn active" role="tab" aria-selected="true" onclick="switchTab('image')">
+            🖼️ Imagen
+        </button>
+        <button id="tabBtnVideo" class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('video')">
+            🎬 Video
+        </button>
+    </div>
+
+    <div id="tabPanelImage" class="tab-panel active" role="tabpanel">
 
 
     <!-- =====================================================
@@ -822,6 +1029,10 @@ button:disabled {
     </div>
 
 
+    </div> <!-- end tabPanelImage -->
+
+    <div id="tabPanelVideo" class="tab-panel" role="tabpanel">
+
     <!-- =====================================================
          VIDEO
     ====================================================== -->
@@ -1028,12 +1239,13 @@ button:disabled {
     </div>
 
 
+    </div>
+
     <div class="small">
         WaveSpeed AI Studio · frontend local para Codespaces
     </div>
-
-</div>
-
+    </div> <!-- end tabPanelVideo -->
+    </div> <!-- end tabs-wrapper -->
 
 <script>
 
@@ -1126,6 +1338,50 @@ function setImageMode(mode) {
    API KEY
 ========================================================== */
 
+async function setApiBarState(connected) {
+    const connectedView = document.getElementById("apiConnectedView");
+    const editView = document.getElementById("apiEditView");
+    const saveBtn = document.getElementById("apiSaveBtn");
+    const editBtn = document.getElementById("apiEditBtn");
+    const deleteBtn = document.getElementById("apiDeleteBtn");
+    const apiInput = document.getElementById("apiKey");
+    const status = document.getElementById("keyStatus");
+
+    if (connected) {
+        connectedView.classList.remove("hidden");
+        editView.classList.add("hidden");
+        saveBtn.classList.add("hidden");
+        editBtn.classList.remove("hidden");
+        deleteBtn.classList.remove("hidden");
+        // clear input for security
+        apiInput.value = "";
+    } else {
+        connectedView.classList.add("hidden");
+        editView.classList.remove("hidden");
+        saveBtn.classList.remove("hidden");
+        editBtn.classList.add("hidden");
+        // keep delete hidden if no key? show anyway to be safe -> hide when no key
+        if (status.textContent.includes("no configurada") || status.textContent.includes("No se pudo")) {
+            deleteBtn.classList.add("hidden");
+        } else {
+            deleteBtn.classList.remove("hidden");
+        }
+    }
+}
+
+function editKeyMode() {
+    const editView = document.getElementById("apiEditView");
+    const saveBtn = document.getElementById("apiSaveBtn");
+    const connectedView = document.getElementById("apiConnectedView");
+    const editBtn = document.getElementById("apiEditBtn");
+    
+    connectedView.classList.add("hidden");
+    editView.classList.remove("hidden");
+    saveBtn.classList.remove("hidden");
+    editBtn.classList.add("hidden");
+    document.getElementById("apiKey").focus();
+}
+
 async function checkStatus() {
 
     try {
@@ -1145,12 +1401,14 @@ async function checkStatus() {
         if (data.wavespeed_configured) {
 
             status.textContent =
-                "🟢 WaveSpeed API configurada";
+                "🟢 Configurada";
+            setApiBarState(true);
 
         } else {
 
             status.textContent =
-                "🔴 WaveSpeed API no configurada";
+                "🔴 No configurada";
+            setApiBarState(false);
         }
 
     } catch (error) {
@@ -1158,7 +1416,8 @@ async function checkStatus() {
         document.getElementById(
             "keyStatus"
         ).textContent =
-            "No se pudo consultar el estado.";
+            "Sin conexión";
+        setApiBarState(false);
     }
 }
 
@@ -1228,31 +1487,24 @@ async function deleteKey() {
         return;
     }
 
-    const response = await fetch(
+    fetch(
         "/api/delete-key",
         {
             method: "POST"
         }
-    );
-
-    const data =
-        await response.json();
-
-    if (!data.success) {
-
-        alert(
-            data.error ||
-            "No se pudo eliminar."
-        );
-
-        return;
-    }
-
-    await checkStatus();
-
-    alert(
-        "API Key eliminada."
-    );
+    ).then(r=>r.json()).then(data=>{
+        if (!data.success) {
+            alert(data.error || "No se pudo eliminar.");
+            return;
+        }
+        const status = document.getElementById("keyStatus");
+        status.textContent = "🔴 No configurada";
+        setApiBarState(false);
+        document.getElementById("apiKey").value = "";
+        // alert("API Key eliminada.");
+    }).catch(()=>{
+        alert("Error eliminando key");
+    });
 }
 
 
@@ -1720,6 +1972,7 @@ async function editImage() {
 ========================================================== */
 
 function useImageForVideo() {
+    switchTab("video");
 
     if (!generatedImageUrl) {
         return;
@@ -2186,6 +2439,19 @@ document.addEventListener("keydown", function(event) {
 });
 
 /* ==========================================================
+   TABS LOGIC
+========================================================== */
+function switchTab(tab) {
+    const isImage = tab === "image";
+    document.getElementById("tabPanelImage").classList.toggle("active", isImage);
+    document.getElementById("tabPanelVideo").classList.toggle("active", !isImage);
+    document.getElementById("tabBtnImage").classList.toggle("active", isImage);
+    document.getElementById("tabBtnVideo").classList.toggle("active", !isImage);
+    document.getElementById("tabBtnImage").setAttribute("aria-selected", isImage ? "true" : "false");
+    document.getElementById("tabBtnVideo").setAttribute("aria-selected", !isImage ? "true" : "false");
+}
+
+/* ==========================================================
    START
 ========================================================== */
 
@@ -2193,6 +2459,6 @@ checkStatus();
 
 </script>
 
-</body>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 
 </html>

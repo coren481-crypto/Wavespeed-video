@@ -1,10 +1,12 @@
 import json
 import os
+import re
 import time
 import mimetypes
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import unquote
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 # ============================================================
@@ -17,6 +19,9 @@ PORT = 8000
 BASE_DIR = Path(__file__).resolve().parent
 WEB_DIR = BASE_DIR / "web"
 CONFIG_FILE = BASE_DIR / "config.json"
+
+# Tiempo máximo (segundos) esperando el resultado de una predicción
+POLL_TIMEOUT = 900
 
 # ----------------------------
 # WaveSpeed
@@ -140,8 +145,15 @@ def get_prediction_id(response):
 def poll_prediction(prediction_id, api_key):
     url = WAVESPEED_RESULT_URL.format(prediction_id)
     headers = {"Authorization": f"Bearer {api_key}"}
+    started = time.time()
 
     while True:
+        if time.time() - started > POLL_TIMEOUT:
+            raise RuntimeError(
+                f"Tiempo de espera agotado ({POLL_TIMEOUT}s) esperando "
+                f"a WaveSpeed. Prediction ID: {prediction_id}"
+            )
+
         request = Request(url, headers=headers, method="GET")
 
         try:
@@ -157,6 +169,9 @@ def poll_prediction(prediction_id, api_key):
             raise RuntimeError(
                 f"Error consultando WaveSpeed HTTP {e.code}: {error_body}"
             )
+
+        except URLError as e:
+            raise RuntimeError(f"Network error: {e}")
 
         result = body.get("data", body)
 
@@ -198,15 +213,19 @@ def get_first_output(result):
 # MULTIPART PARSER
 # ============================================================
 
+_NAME_RE = re.compile(r'(?:^|;)\s*name="([^"]*)"')
+_FILENAME_RE = re.compile(r'(?:^|;)\s*filename="([^"]*)"')
+
+
 def parse_multipart(handler, body):
     content_type = handler.headers.get("Content-Type", "")
 
     if "boundary=" not in content_type:
         raise RuntimeError("No se encontró boundary multipart.")
 
-    boundary = content_type.split("boundary=", 1)[1].strip()
+    boundary = content_type.split("boundary=", 1)[1].split(";", 1)[0].strip()
 
-    if boundary.startswith('"'):
+    if boundary.startswith('"') and boundary.endswith('"'):
         boundary = boundary[1:-1]
 
     boundary_bytes = b"--" + boundary.encode()
@@ -220,7 +239,18 @@ def parse_multipart(handler, body):
         if not part:
             continue
 
-        part = part.strip(b"\r\n-")
+        # Cierre del multipart ("--\r\n"): no hay más partes
+        if part.startswith(b"--"):
+            continue
+
+        # Quitar SOLO el salto de línea que rodea a cada parte,
+        # sin tocar el contenido (antes se recortaban guiones y
+        # saltos de línea reales del contenido).
+        if part.startswith(b"\r\n"):
+            part = part[2:]
+
+        if part.endswith(b"\r\n"):
+            part = part[:-2]
 
         if not part:
             continue
@@ -235,26 +265,21 @@ def parse_multipart(handler, body):
 
         for line in headers.split("\r\n"):
             if line.lower().startswith("content-disposition:"):
-                disposition = line
+                disposition = line.split(":", 1)[1].strip()
 
         if not disposition:
             continue
 
-        name = None
-        filename = None
+        name_match = _NAME_RE.search(disposition)
+        filename_match = _FILENAME_RE.search(disposition)
 
-        for item in disposition.split(";"):
-            item = item.strip()
-
-            if item.startswith("name="):
-                name = item.split("=", 1)[1].strip('"')
-            elif item.startswith("filename="):
-                filename = item.split("=", 1)[1].strip('"')
-
-        if not name:
+        if not name_match:
             continue
 
-        if filename:
+        name = name_match.group(1)
+        filename = filename_match.group(1) if filename_match else None
+
+        if filename is not None and filename != "":
             content_type_value = "application/octet-stream"
 
             for line in headers.split("\r\n"):
@@ -268,7 +293,7 @@ def parse_multipart(handler, body):
                 "data": content
             })
 
-        else:
+        elif filename is None:
             fields[name] = content.decode("utf-8", errors="ignore")
 
     return fields, files
@@ -278,11 +303,17 @@ def parse_multipart(handler, body):
 # IMGBB
 # ============================================================
 
-def upload_to_imgbb(image_bytes, filename, api_key):
+def upload_to_imgbb(image_bytes, filename, api_key,
+                    content_type="image/jpeg"):
     if not api_key:
         raise RuntimeError(
             "No existe IMGBB_API_KEY en los secretos de Codespaces."
         )
+
+    if not content_type.startswith("image/"):
+        content_type = "image/jpeg"
+
+    safe_filename = filename.replace('"', "").replace("\r", "").replace("\n", "")
 
     boundary = "----WaveSpeedBoundary" + str(int(time.time() * 1000))
     body = bytearray()
@@ -303,8 +334,8 @@ def upload_to_imgbb(image_bytes, filename, api_key):
         (
             f"--{boundary}\r\n"
             f'Content-Disposition: form-data; name="image"; '
-            f'filename="{filename}"\r\n'
-            f"Content-Type: image/jpeg\r\n\r\n"
+            f'filename="{safe_filename}"\r\n'
+            f"Content-Type: {content_type}\r\n\r\n"
         ).encode()
     )
 
@@ -330,6 +361,9 @@ def upload_to_imgbb(image_bytes, filename, api_key):
             error_body = str(e)
 
         raise RuntimeError(f"ImgBB HTTP {e.code}: {error_body}")
+
+    except URLError as e:
+        raise RuntimeError(f"Network error (ImgBB): {e}")
 
     if not result.get("success"):
         raise RuntimeError(
@@ -435,7 +469,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
 
-        if self.path == "/api/status":
+        if self.path.split("?", 1)[0] == "/api/status":
             config = load_config()
 
             send_json(self, {
@@ -446,13 +480,25 @@ class Handler(BaseHTTPRequestHandler):
 
             return
 
-        if self.path == "/":
-            path = WEB_DIR / "index.html"
-        else:
-            requested = self.path.split("?", 1)[0].lstrip("/")
-            path = WEB_DIR / requested
+        # ----------------------------------------------------
+        # Archivos estáticos (protegido contra path traversal)
+        # ----------------------------------------------------
 
-        if not path.exists() or not path.is_file():
+        web_root = WEB_DIR.resolve()
+        raw_path = self.path.split("?", 1)[0]
+
+        if raw_path == "/":
+            requested = "index.html"
+        else:
+            requested = unquote(raw_path).lstrip("/")
+
+        try:
+            path = (web_root / requested).resolve()
+        except (OSError, ValueError):
+            self.send_error(404, "Archivo no encontrado")
+            return
+
+        if not path.is_relative_to(web_root) or not path.is_file():
             self.send_error(404, "Archivo no encontrado")
             return
 
@@ -613,7 +659,10 @@ class Handler(BaseHTTPRequestHandler):
 
                 for file_info in files:
                     image_url = upload_to_imgbb(
-                        file_info["data"], file_info["filename"], imgbb_key
+                        file_info["data"],
+                        file_info["filename"],
+                        imgbb_key,
+                        file_info["content_type"]
                     )
                     image_urls.append(image_url)
 
@@ -643,12 +692,16 @@ class Handler(BaseHTTPRequestHandler):
                 prompt = fields.get("prompt", "").strip()
                 resolution = fields.get("resolution", "720p")
                 aspect_ratio = fields.get("aspect_ratio", "9:16")
-                duration = int(fields.get("duration", "21"))
                 enable_audio = fields.get("enable_audio", "true").lower() == "true"
                 enable_prompt_expansion = (
                     fields.get("enable_prompt_expansion", "false").lower() == "true"
                 )
                 generated_image_url = fields.get("image_url", "").strip()
+
+                try:
+                    duration = int(fields.get("duration", "21"))
+                except ValueError:
+                    raise RuntimeError("Duración no válida.")
 
                 config = load_config()
                 api_key = config.get("wavespeed_api_key")
@@ -694,7 +747,10 @@ class Handler(BaseHTTPRequestHandler):
 
                     first_file = files[0]
                     image_url = upload_to_imgbb(
-                        first_file["data"], first_file["filename"], imgbb_key
+                        first_file["data"],
+                        first_file["filename"],
+                        imgbb_key,
+                        first_file["content_type"]
                     )
 
                 # ---------------------------------------------
@@ -755,7 +811,8 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
 
-    server = HTTPServer((HOST, PORT), Handler)
+    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    server.daemon_threads = True
 
     try:
         server.serve_forever()
