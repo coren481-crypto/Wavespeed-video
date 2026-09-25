@@ -151,8 +151,16 @@ def poll_prediction(prediction_id, api_key):
     headers = {"Authorization": f"Bearer {api_key}"}
     started = time.time()
 
+    # Los GET de resultado pueden devolver temporalmente 502/503/504
+    # mientras el gateway de WaveSpeed se recupera. En esos casos NO
+    # debemos considerar fallida la generación: simplemente reintentamos.
+    transient_http_errors = {429, 500, 502, 503, 504}
+    retry_delay = 2
+
     while True:
-        if time.time() - started > POLL_TIMEOUT:
+        elapsed = time.time() - started
+
+        if elapsed > POLL_TIMEOUT:
             raise RuntimeError(
                 f"Tiempo de espera agotado ({POLL_TIMEOUT}s) esperando "
                 f"a WaveSpeed. Prediction ID: {prediction_id}"
@@ -164,18 +172,71 @@ def poll_prediction(prediction_id, api_key):
             with urlopen(request, timeout=120) as response:
                 body = json.loads(response.read().decode("utf-8"))
 
+            # Una consulta exitosa reinicia el retraso de recuperación.
+            retry_delay = 2
+
         except HTTPError as e:
             try:
-                error_body = e.read().decode("utf-8")
+                error_body = e.read().decode("utf-8", errors="replace")
             except Exception:
                 error_body = str(e)
+
+            # Error temporal del gateway/API. Reintentamos el GET sin crear
+            # una nueva predicción, evitando duplicar tareas o cargos.
+            if e.code in transient_http_errors:
+                retry_after = None
+
+                try:
+                    retry_header = e.headers.get("Retry-After")
+                    if retry_header:
+                        retry_after = max(1, int(float(retry_header)))
+                except (TypeError, ValueError):
+                    retry_after = None
+
+                delay = retry_after if retry_after is not None else retry_delay
+
+                remaining = POLL_TIMEOUT - (time.time() - started)
+                if remaining <= 0:
+                    raise RuntimeError(
+                        f"Tiempo de espera agotado ({POLL_TIMEOUT}s) "
+                        f"después de errores HTTP {e.code}. "
+                        f"Prediction ID: {prediction_id}"
+                    )
+
+                delay = min(delay, 10, max(1, int(remaining)))
+
+                print(
+                    f"[WaveSpeed] HTTP {e.code} consultando "
+                    f"{prediction_id}. Reintentando en {delay}s..."
+                )
+
+                time.sleep(delay)
+
+                # Backoff progresivo: 2, 4, 6, 8, 10 segundos.
+                retry_delay = min(retry_delay + 2, 10)
+                continue
 
             raise RuntimeError(
                 f"Error consultando WaveSpeed HTTP {e.code}: {error_body}"
             )
 
         except URLError as e:
-            raise RuntimeError(f"Network error: {e}")
+            # También tratamos los fallos de red temporales como recuperables.
+            remaining = POLL_TIMEOUT - (time.time() - started)
+
+            if remaining <= 0:
+                raise RuntimeError(f"Network error: {e}")
+
+            delay = min(retry_delay, 10, max(1, int(remaining)))
+
+            print(
+                f"[WaveSpeed] Error de red consultando "
+                f"{prediction_id}. Reintentando en {delay}s..."
+            )
+
+            time.sleep(delay)
+            retry_delay = min(retry_delay + 2, 10)
+            continue
 
         result = body.get("data", body)
 
